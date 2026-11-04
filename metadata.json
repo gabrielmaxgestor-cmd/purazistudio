@@ -1,0 +1,8 @@
+{
+  "name": "Remix Purazi Barber Booking",
+  "description": "Fast, seamless online scheduling platform for your barbershop featuring elegant animations and efficient management tools.",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}
