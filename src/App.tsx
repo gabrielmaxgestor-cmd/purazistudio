@@ -1,11 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { Navbar } from './components/Navbar';
 import { BookingDrawer } from './components/BookingDrawer';
 import { ConsultAppointmentModal } from './components/ConsultAppointmentModal';
 import { BarberAdminPanel } from './components/BarberAdminPanel';
 import { ServicesModal } from './components/ServicesModal';
-import { HaircutCarouselSection } from './components/HaircutCarouselSection';
-import { MiniSchedule } from './components/MiniSchedule';
 import { Service } from './utils/bookingLogic';
 import { getStoredServices } from './utils/storage';
 import { Calendar, Search, ShieldCheck, Scissors } from 'lucide-react';
@@ -17,10 +14,6 @@ export default function App() {
   const [adminOpen, setAdminOpen] = useState(false);
   const [selectedServiceId, setSelectedServiceId] = useState<string | null>(null);
 
-  // Preselected slot from mini schedule
-  const [preselectedDate, setPreselectedDate] = useState<string | undefined>(undefined);
-  const [preselectedTime, setPreselectedTime] = useState<string | undefined>(undefined);
-
   const [services, setServices] = useState<Service[]>([]);
   const [refreshKey, setRefreshKey] = useState(0);
 
@@ -30,15 +23,6 @@ export default function App() {
 
   const handleOpenBookingWithService = (serviceId?: string) => {
     setSelectedServiceId(serviceId || null);
-    setPreselectedDate(undefined);
-    setPreselectedTime(undefined);
-    setBookingOpen(true);
-  };
-
-  const handleMiniScheduleSlotSelected = (dateStr: string, timeStr: string) => {
-    setPreselectedDate(dateStr);
-    setPreselectedTime(timeStr);
-    setSelectedServiceId(null);
     setBookingOpen(true);
   };
 
@@ -53,20 +37,12 @@ export default function App() {
 
   return (
     <div id="top" className="min-h-screen bg-[#0f0f0f] text-white">
-      {/* 1. Barra de Navegação Superior (Item 1) */}
-      <Navbar
-        onOpenBooking={() => handleOpenBookingWithService()}
-        onOpenServices={() => setServicesOpen(true)}
-        onOpenConsult={() => setConsultOpen(true)}
-        onOpenAdmin={() => setAdminOpen(true)}
-      />
-
       {/* ========================================================================= */}
       {/* ESTRUTURA ORIGINAL FIEL AO DESIGN ANEXADO PELO USUÁRIO                    */}
       {/* Imagem original com 100% de nitidez, sem manchas ou blocos cortados       */}
       {/* Caixas de textos interativas identificadas e posicionadas com precisão    */}
       {/* ========================================================================= */}
-      <main className="page relative max-w-[1366px] mx-auto leading-none bg-[#0f0f0f] pt-14">
+      <main className="page relative max-w-[1366px] mx-auto leading-none bg-[#0f0f0f]">
         <h1 className="sr">PURAZI Studio — Aqui, cada detalhe valoriza sua melhor versão. Barbearia em Valença/RJ</h1>
 
         {/* Imagem base com o design original anexado pelo usuário */}
@@ -115,20 +91,7 @@ export default function App() {
 
         {/* ========================================================================= */}
         {/* 2. DOBRA 2: 'Agende seu horário abaixo:' + Subtítulo + Máquina             */}
-        {/* Mini agenda interativa (Item 5) sobreposta com dia e horário              */}
         {/* ========================================================================= */}
-        <div
-          id="agendar"
-          className="absolute z-20 w-[90%] sm:w-[80%] md:w-[65%] lg:w-[50%]"
-          style={{
-            left: '50%',
-            top: '25.0%',
-            transform: 'translateX(-50%)',
-          }}
-        >
-          <MiniSchedule onSelectSlot={handleMiniScheduleSlotSelected} />
-        </div>
-
         {/* Caixa de texto clicável: 'Agende seu horário abaixo:' */}
         <button
           type="button"
@@ -163,40 +126,62 @@ export default function App() {
           <span className="sr">Rápido, prático e sem intermediários. Escolha o serviço, barbeiro e confirme em 1 minuto.</span>
         </button>
 
+        {/* Área clicável da máquina de corte para agendamento direto */}
+        <button
+          type="button"
+          className="h rounded cursor-pointer transition-all duration-300 hover:ring-1 hover:ring-amber-400/30"
+          style={{
+            left: '16.00%',
+            top: '25.50%',
+            width: '70.00%',
+            height: '16.00%',
+          }}
+          onClick={() => handleOpenBookingWithService()}
+          aria-label="Clique para agendar seu horário"
+          title="Clique para agendar seu horário"
+        >
+          <span className="sr">Agendamento online PURAZI Studio</span>
+        </button>
+
         {/* ========================================================================= */}
         {/* 3. DOBRA 3: Localização com Pin e Endereço Avenida Nilo Peçanha           */}
         {/* ========================================================================= */}
         <a
-          id="localizacao"
           href="https://www.google.com/maps/search/?api=1&query=Avenida+Nilo+Pe%C3%A7anha+1027+Valen%C3%A7a+RJ"
           target="_blank"
           rel="noopener noreferrer"
-          className="h rounded cursor-pointer transition-all duration-200 hover:ring-1 hover:ring-white/20 hover:bg-white/[0.02]"
+          className="h rounded cursor-pointer transition-all duration-200 hover:ring-1 hover:ring-red-400/40 hover:bg-white/[0.02]"
           style={{
-            left: '8.50%',
-            top: '49.00%',
-            width: '83.00%',
-            height: '8.50%',
+            left: '24.30%',
+            top: '52.00%',
+            width: '61.00%',
+            height: '8.54%',
           }}
-          aria-label="Localização: Avenida Nilo Peçanha, 1027 - Valença / RJ"
-          title="Abrir rota no Google Maps: Av. Nilo Peçanha, 1027"
+          aria-label="Avenida Nilo Peçanha, 1027 - Valença/RJ. Abrir no Google Maps"
+          title="Abrir localização no Google Maps: Avenida Nilo Peçanha, 1027 - Valença/RJ"
         >
-          <span className="sr">Localização: Avenida Nilo Peçanha, 1027 - Valença / RJ</span>
+          <span className="sr">Avenida Nilo Peçanha, 1027 - Valença/RJ</span>
         </a>
 
         {/* ========================================================================= */}
-        {/* 4. DOBRA 4: 'Dúvida? Chama no WhatsApp.' com Carrossel Contínuo GSAP (Item 4) */}
+        {/* 4. DOBRA 4: 'Dúvida? Chama no WhatsApp.'                                   */}
         {/* ========================================================================= */}
-        <div
-          className="absolute w-full z-20 overflow-hidden"
+        <a
+          href="https://wa.me/5524999999999?text=Ol%C3%A1!%20Gostaria%20de%20tirar%20uma%20d%C3%BAvida%20com%20o%20PURAZI%20Studio."
+          target="_blank"
+          rel="noopener noreferrer"
+          className="h rounded cursor-pointer transition-all duration-200 hover:ring-1 hover:ring-emerald-500/40 hover:bg-black/[0.03]"
           style={{
-            left: '0',
-            top: '68.0%',
-            height: '14.0%',
+            left: '8.50%',
+            top: '73.65%',
+            width: '38.00%',
+            height: '2.50%',
           }}
+          aria-label="Dúvida? Chama no WhatsApp"
+          title="Falar no WhatsApp oficial do PURAZI Studio"
         >
-          <HaircutCarouselSection />
-        </div>
+          <span className="sr">Dúvida? Chama no WhatsApp.</span>
+        </a>
 
         {/* ========================================================================= */}
         {/* 5. RODAPÉ INSTITUCIONAL COM IDENTIFICAÇÃO EXATA DE CAIXAS DE TEXTO       */}
@@ -464,8 +449,6 @@ export default function App() {
         onClose={() => setBookingOpen(false)}
         services={services}
         preselectedServiceId={selectedServiceId}
-        preselectedDateStr={preselectedDate}
-        preselectedTimeStr={preselectedTime}
         onBookingComplete={handleDataChanged}
       />
 
