@@ -33,12 +33,27 @@ export interface BlockedSlot {
   reason: string;
 }
 
+export interface BarberSettings {
+  fixedOffDays: number[]; // 0 = Domingo, 1 = Segunda, 2 = Terça, 3 = Quarta, 4 = Quinta, 5 = Sexta, 6 = Sábado
+  workStart: string; // HH:MM e.g. '09:00'
+  workEnd: string; // HH:MM e.g. '20:00'
+  intervalMinutes: number; // e.g. 45
+}
+
+export const DEFAULT_BARBER_SETTINGS: BarberSettings = {
+  fixedOffDays: [0], // Domingo como folga fixa inicial
+  workStart: '09:00',
+  workEnd: '20:00',
+  intervalMinutes: 45,
+};
+
 export interface DayOption {
   dateStr: string; // YYYY-MM-DD
   dayNumber: number;
   dayName: string; // Seg, Ter, Qua...
   monthName: string; // Out, Nov, Dez...
   fullLabel: string;
+  isOffDay?: boolean;
 }
 
 export const INITIAL_SERVICES: Service[] = [
@@ -91,6 +106,26 @@ export const AVAILABLE_HOURS = [
 ];
 
 /**
+ * Generates slot hours between workStart and workEnd based on intervalMinutes
+ */
+export function generateHoursForSchedule(settings: BarberSettings = DEFAULT_BARBER_SETTINGS): string[] {
+  const [startH, startM] = settings.workStart.split(':').map(Number);
+  const [endH, endM] = settings.workEnd.split(':').map(Number);
+  
+  const startTotal = startH * 60 + startM;
+  const endTotal = endH * 60 + endM;
+  const interval = settings.intervalMinutes || 45;
+
+  const hours: string[] = [];
+  for (let m = startTotal; m < endTotal; m += interval) {
+    const hh = String(Math.floor(m / 60)).padStart(2, '0');
+    const mm = String(m % 60).padStart(2, '0');
+    hours.push(`${hh}:${mm}`);
+  }
+  return hours.length > 0 ? hours : AVAILABLE_HOURS;
+}
+
+/**
  * Calculates total price of an array of services
  */
 export function calculateTotal(services: Service[]): number {
@@ -115,7 +150,7 @@ export function generateBookingCode(): string {
 /**
  * Generates the next 90 days from a reference date
  */
-export function generateNext90Days(startDate: Date = new Date()): DayOption[] {
+export function generateNext90Days(startDate: Date = new Date(), settings: BarberSettings = DEFAULT_BARBER_SETTINGS): DayOption[] {
   const days: DayOption[] = [];
   const dayNames = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
   const monthNames = [
@@ -127,19 +162,20 @@ export function generateNext90Days(startDate: Date = new Date()): DayOption[] {
     const d = new Date(startDate);
     d.setDate(d.getDate() + i);
     
-    // Ignore Sundays if the barber is closed on Sundays, or keep all days
-    // In Valença barbershops usually work Mon-Sat, but we let them select any day or mark day blocked
+    const dayOfWeek = d.getDay();
     const yyyy = d.getFullYear();
     const mm = String(d.getMonth() + 1).padStart(2, '0');
     const dd = String(d.getDate()).padStart(2, '0');
     const dateStr = `${yyyy}-${mm}-${dd}`;
+    const isOffDay = settings.fixedOffDays.includes(dayOfWeek);
     
     days.push({
       dateStr,
       dayNumber: d.getDate(),
-      dayName: dayNames[d.getDay()],
+      dayName: dayNames[dayOfWeek],
       monthName: monthNames[d.getMonth()],
-      fullLabel: `${dayNames[d.getDay()]}, ${d.getDate()} de ${monthNames[d.getMonth()]}`
+      fullLabel: `${dayNames[dayOfWeek]}, ${d.getDate()} de ${monthNames[d.getMonth()]}`,
+      isOffDay,
     });
   }
 
@@ -153,8 +189,26 @@ export function isTimeSlotAvailable(
   dateStr: string,
   timeStr: string,
   appointments: Appointment[],
-  blockedSlots: BlockedSlot[]
+  blockedSlots: BlockedSlot[],
+  settings?: BarberSettings
 ): boolean {
+  const activeSettings = settings || DEFAULT_BARBER_SETTINGS;
+
+  // Check if day is fixed off day (e.g. domingo, sábado)
+  const [yyyy, mm, dd] = dateStr.split('-').map(Number);
+  const dateObj = new Date(yyyy, mm - 1, dd);
+  if (activeSettings.fixedOffDays && activeSettings.fixedOffDays.includes(dateObj.getDay())) {
+    return false;
+  }
+
+  // Check if time is outside barber working hours
+  if (activeSettings.workStart && timeStr < activeSettings.workStart) {
+    return false;
+  }
+  if (activeSettings.workEnd && timeStr >= activeSettings.workEnd) {
+    return false;
+  }
+
   // Check if whole day is blocked
   const isDayBlocked = blockedSlots.some(
     b => b.dateStr === dateStr && (!b.timeStr || b.timeStr === '')
@@ -206,13 +260,13 @@ export function formatWhatsAppBookingMessage(appointment: Appointment): string {
 }
 
 /**
- * Checks if an appointment can be cancelled/rescheduled based on minimum notice hours (default 2 hours)
+ * Checks if an appointment can be cancelled/rescheduled based on minimum notice hours (default 12 hours)
  */
 export function canRescheduleOrCancel(
   appointmentDateStr: string,
   appointmentTimeStr: string,
   currentDate: Date = new Date(),
-  minHoursNotice: number = 2
+  minHoursNotice: number = 12
 ): { allowed: boolean; reason?: string } {
   const [yyyy, mm, dd] = appointmentDateStr.split('-').map(Number);
   const [hh, min] = appointmentTimeStr.split(':').map(Number);

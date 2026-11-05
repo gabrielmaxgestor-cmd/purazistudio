@@ -11,6 +11,7 @@ import {
   INITIAL_SERVICES,
   Appointment,
   BlockedSlot,
+  BarberSettings,
 } from './bookingLogic';
 
 test('calculateTotal calculates sum of service prices', () => {
@@ -85,19 +86,48 @@ test('isValidPhone validates phone numbers correctly', () => {
   assert.equal(isValidPhone(''), false);
 });
 
-test('canRescheduleOrCancel enforces minimum notice window', () => {
+test('canRescheduleOrCancel enforces minimum notice window (12 hours default)', () => {
   const refNow = new Date('2026-11-02T10:00:00');
   
-  // 5 hours ahead -> allowed
-  const future = canRescheduleOrCancel('2026-11-02', '15:00', refNow, 2);
+  // 15 hours ahead -> allowed (> 12h)
+  const future = canRescheduleOrCancel('2026-11-03', '01:00', refNow, 12);
   assert.equal(future.allowed, true);
 
-  // 1 hour ahead -> disallowed (< 2h)
-  const tight = canRescheduleOrCancel('2026-11-02', '10:45', refNow, 2);
+  // 6 hours ahead -> disallowed (< 12h)
+  const tight = canRescheduleOrCancel('2026-11-02', '16:00', refNow, 12);
   assert.equal(tight.allowed, false);
-  assert.match(tight.reason || '', /mínimo 2h/);
+  assert.match(tight.reason || '', /mínimo 12h/);
 
   // In the past
-  const past = canRescheduleOrCancel('2026-11-01', '10:00', refNow, 2);
+  const past = canRescheduleOrCancel('2026-11-01', '10:00', refNow, 12);
   assert.equal(past.allowed, false);
+});
+
+test('BarberSettings fixed off-days and working hours are respected in availability', () => {
+  const customSettings: BarberSettings = {
+    workStart: '10:00',
+    workEnd: '18:00',
+    intervalMinutes: 45,
+    fixedOffDays: [0, 6], // Sunday & Saturday
+  };
+
+  // 2026-11-01 is a Sunday (day 0) -> should be unavailable
+  const isSundayAvailable = isTimeSlotAvailable('2026-11-01', '10:00', [], [], customSettings);
+  assert.equal(isSundayAvailable, false);
+
+  // 2026-11-07 is a Saturday (day 6) -> should be unavailable
+  const isSaturdayAvailable = isTimeSlotAvailable('2026-11-07', '11:00', [], [], customSettings);
+  assert.equal(isSaturdayAvailable, false);
+
+  // 2026-11-02 is a Monday (day 1) -> available between 10:00 and 18:00
+  const isMonday10Available = isTimeSlotAvailable('2026-11-02', '10:00', [], [], customSettings);
+  assert.equal(isMonday10Available, true);
+
+  // Slot outside working hours: 09:00 (< 10:00) -> should be unavailable
+  const isEarlySlotAvailable = isTimeSlotAvailable('2026-11-02', '09:00', [], [], customSettings);
+  assert.equal(isEarlySlotAvailable, false);
+
+  // Slot outside working hours: 19:00 (> 18:00) -> should be unavailable
+  const isLateSlotAvailable = isTimeSlotAvailable('2026-11-02', '19:00', [], [], customSettings);
+  assert.equal(isLateSlotAvailable, false);
 });

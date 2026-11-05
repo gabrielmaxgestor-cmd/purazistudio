@@ -3,9 +3,12 @@ import { BookingDrawer } from './components/BookingDrawer';
 import { ConsultAppointmentModal } from './components/ConsultAppointmentModal';
 import { BarberAdminPanel } from './components/BarberAdminPanel';
 import { ServicesModal } from './components/ServicesModal';
-import { Service } from './utils/bookingLogic';
+import { Navbar } from './components/Navbar';
+import { MiniBookingAgenda } from './components/MiniBookingAgenda';
+import { HaircutCarouselSection } from './components/HaircutCarouselSection';
+import { Service, DayOption } from './utils/bookingLogic';
 import { getStoredServices } from './utils/storage';
-import { Calendar, Search, ShieldCheck, Scissors } from 'lucide-react';
+import { Calendar, Search, ShieldCheck, Scissors, ArrowRight } from 'lucide-react';
 
 export default function App() {
   const [bookingOpen, setBookingOpen] = useState(false);
@@ -13,6 +16,8 @@ export default function App() {
   const [servicesOpen, setServicesOpen] = useState(false);
   const [adminOpen, setAdminOpen] = useState(false);
   const [selectedServiceId, setSelectedServiceId] = useState<string | null>(null);
+  const [selectedDay, setSelectedDay] = useState<DayOption | null>(null);
+  const [selectedTime, setSelectedTime] = useState<string | null>(null);
 
   const [services, setServices] = useState<Service[]>([]);
   const [refreshKey, setRefreshKey] = useState(0);
@@ -23,6 +28,15 @@ export default function App() {
 
   const handleOpenBookingWithService = (serviceId?: string) => {
     setSelectedServiceId(serviceId || null);
+    setSelectedDay(null);
+    setSelectedTime(null);
+    setBookingOpen(true);
+  };
+
+  const handleMiniAgendaSelect = (day: DayOption, time: string) => {
+    setSelectedDay(day);
+    setSelectedTime(time);
+    setSelectedServiceId(null);
     setBookingOpen(true);
   };
 
@@ -37,6 +51,17 @@ export default function App() {
 
   return (
     <div id="top" className="min-h-screen bg-[#0f0f0f] text-white">
+      {/* ========================================================================= */}
+      {/* 1. BARRA DE NAVEGAÇÃO SUPERIOR CONFORME REQUISITO 1                        */}
+      {/* Fixa, discreta, transparente sobre o cinza inicial e grafite com desfoque  */}
+      {/* ========================================================================= */}
+      <Navbar
+        onOpenBooking={() => handleOpenBookingWithService()}
+        onOpenConsult={() => setConsultOpen(true)}
+        onOpenServices={() => setServicesOpen(true)}
+        onOpenAdmin={() => setAdminOpen(true)}
+      />
+
       {/* ========================================================================= */}
       {/* ESTRUTURA ORIGINAL FIEL AO DESIGN ANEXADO PELO USUÁRIO                    */}
       {/* Imagem original com 100% de nitidez, sem manchas ou blocos cortados       */}
@@ -90,63 +115,62 @@ export default function App() {
         </a>
 
         {/* ========================================================================= */}
-        {/* 2. DOBRA 2: 'Agende seu horário abaixo:' + Subtítulo + Máquina             */}
+        {/* 2. DOBRA 2: 'Agende seu horário abaixo:' + Subtítulo + Botão Único         */}
+        {/* Conforme solicitação: apenas um botão destacado e único com a CTA           */}
+        {/* 'Iniciar agendamento online', alinhado ao texto                             */}
         {/* ========================================================================= */}
-        {/* Caixa de texto clicável: 'Agende seu horário abaixo:' */}
-        <button
-          type="button"
-          onClick={() => handleOpenBookingWithService()}
-          className="h rounded cursor-pointer transition-all duration-200 hover:ring-1 hover:ring-amber-300/40 hover:bg-white/[0.02]"
+        {/* Caixa de identificação do título: 'Agende seu horário abaixo:' */}
+        <div
+          className="h rounded select-text"
           style={{
             left: '20.00%',
             top: '21.50%',
             width: '60.00%',
             height: '2.50%',
           }}
-          aria-label="Agende seu horário abaixo — Clique para agendar online"
-          title="Clique para agendar seu horário online"
+          title="Agende seu horário abaixo"
         >
           <span className="sr">Agende seu horário abaixo:</span>
-        </button>
+        </div>
 
-        {/* Caixa de texto clicável: Subtítulo de agendamento rápido */}
-        <button
-          type="button"
-          onClick={() => handleOpenBookingWithService()}
-          className="h rounded cursor-pointer transition-all duration-200 hover:ring-1 hover:ring-white/20 hover:bg-white/[0.02]"
+        {/* Caixa de identificação do subtítulo: 'Rápido, prático e sem intermediários...' */}
+        <div
+          className="h rounded select-text"
           style={{
             left: '20.00%',
             top: '24.00%',
             width: '60.00%',
             height: '1.40%',
           }}
-          aria-label="Rápido, prático e sem intermediários. Escolha o serviço, barbeiro e confirme em 1 minuto."
           title="Rápido, prático e sem intermediários. Escolha o serviço, barbeiro e confirme em 1 minuto."
         >
           <span className="sr">Rápido, prático e sem intermediários. Escolha o serviço, barbeiro e confirme em 1 minuto.</span>
-        </button>
+        </div>
 
-        {/* Área clicável da máquina de corte para agendamento direto */}
-        <button
-          type="button"
-          className="h rounded cursor-pointer transition-all duration-300 hover:ring-1 hover:ring-amber-400/30"
+        {/* Botão Único e Destacado: 'Iniciar agendamento online' - alinhado ao texto */}
+        <div
+          className="absolute left-1/2 -translate-x-1/2 z-20 pointer-events-auto w-full flex justify-center px-4"
           style={{
-            left: '16.00%',
-            top: '25.50%',
-            width: '70.00%',
-            height: '16.00%',
+            top: '27.4%',
           }}
-          onClick={() => handleOpenBookingWithService()}
-          aria-label="Clique para agendar seu horário"
-          title="Clique para agendar seu horário"
         >
-          <span className="sr">Agendamento online PURAZI Studio</span>
-        </button>
+          <button
+            type="button"
+            onClick={() => handleOpenBookingWithService()}
+            className="group relative inline-flex items-center justify-center gap-3.5 bg-black text-white hover:bg-neutral-900 border-2 border-amber-400 hover:border-amber-300 px-8 sm:px-14 py-4 sm:py-5 text-xs sm:text-sm md:text-base font-bold tracking-[0.25em] uppercase rounded-none shadow-[0_12px_35px_rgba(0,0,0,0.85),0_0_25px_rgba(251,191,36,0.35)] hover:shadow-[0_15px_45px_rgba(0,0,0,0.95),0_0_35px_rgba(251,191,36,0.6)] transition-all duration-300 transform hover:-translate-y-1 active:translate-y-0 cursor-pointer"
+            aria-label="Iniciar agendamento online"
+          >
+            <span className="w-2.5 h-2.5 rounded-full bg-amber-400 group-hover:scale-125 transition-transform animate-pulse" />
+            <span>Iniciar agendamento online</span>
+            <ArrowRight className="w-4 h-4 sm:w-5 sm:h-5 text-amber-400 transition-transform group-hover:translate-x-1" />
+          </button>
+        </div>
 
         {/* ========================================================================= */}
         {/* 3. DOBRA 3: Localização com Pin e Endereço Avenida Nilo Peçanha           */}
         {/* ========================================================================= */}
         <a
+          id="secao-localizacao"
           href="https://www.google.com/maps/search/?api=1&query=Avenida+Nilo+Pe%C3%A7anha+1027+Valen%C3%A7a+RJ"
           target="_blank"
           rel="noopener noreferrer"
@@ -164,24 +188,19 @@ export default function App() {
         </a>
 
         {/* ========================================================================= */}
-        {/* 4. DOBRA 4: 'Dúvida? Chama no WhatsApp.'                                   */}
+        {/* 4. DOBRA 4: Carrossel contínuo de fotos de corte + WhatsApp               */}
+        {/* Posicionado logo abaixo da localização (top 61.2% até 88.8%)              */}
+        {/* Texto visível, aprimorado, sem conflito visual com o restante da página  */}
         {/* ========================================================================= */}
-        <a
-          href="https://wa.me/5524999999999?text=Ol%C3%A1!%20Gostaria%20de%20tirar%20uma%20d%C3%BAvida%20com%20o%20PURAZI%20Studio."
-          target="_blank"
-          rel="noopener noreferrer"
-          className="h rounded cursor-pointer transition-all duration-200 hover:ring-1 hover:ring-emerald-500/40 hover:bg-black/[0.03]"
+        <div
+          className="absolute inset-x-0 z-20 overflow-hidden"
           style={{
-            left: '8.50%',
-            top: '73.65%',
-            width: '38.00%',
-            height: '2.50%',
+            top: '61.2%',
+            height: '27.6%',
           }}
-          aria-label="Dúvida? Chama no WhatsApp"
-          title="Falar no WhatsApp oficial do PURAZI Studio"
         >
-          <span className="sr">Dúvida? Chama no WhatsApp.</span>
-        </a>
+          <HaircutCarouselSection />
+        </div>
 
         {/* ========================================================================= */}
         {/* 5. RODAPÉ INSTITUCIONAL COM IDENTIFICAÇÃO EXATA DE CAIXAS DE TEXTO       */}
@@ -449,6 +468,8 @@ export default function App() {
         onClose={() => setBookingOpen(false)}
         services={services}
         preselectedServiceId={selectedServiceId}
+        initialDay={selectedDay}
+        initialTime={selectedTime}
         onBookingComplete={handleDataChanged}
       />
 

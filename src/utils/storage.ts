@@ -1,9 +1,17 @@
-import { Appointment, BlockedSlot, Service, INITIAL_SERVICES } from './bookingLogic';
+import {
+  Appointment,
+  BlockedSlot,
+  Service,
+  INITIAL_SERVICES,
+  BarberSettings,
+  DEFAULT_BARBER_SETTINGS,
+} from './bookingLogic';
 
 const STORAGE_KEYS = {
   APPOINTMENTS: 'purazi_appointments',
   SERVICES: 'purazi_services',
   BLOCKED: 'purazi_blocked_slots',
+  SETTINGS: 'purazi_barber_settings',
 };
 
 // Realistic initial seed data for PURAZI Studio in Valença/RJ
@@ -120,4 +128,21 @@ export function getStoredBlockedSlots(): BlockedSlot[] {
 
 export function saveBlockedSlots(slots: BlockedSlot[]): void {
   localStorage.setItem(STORAGE_KEYS.BLOCKED, JSON.stringify(slots));
+}
+
+export function getStoredBarberSettings(): BarberSettings {
+  try {
+    const data = localStorage.getItem(STORAGE_KEYS.SETTINGS);
+    if (!data) {
+      localStorage.setItem(STORAGE_KEYS.SETTINGS, JSON.stringify(DEFAULT_BARBER_SETTINGS));
+      return DEFAULT_BARBER_SETTINGS;
+    }
+    return { ...DEFAULT_BARBER_SETTINGS, ...JSON.parse(data) };
+  } catch {
+    return DEFAULT_BARBER_SETTINGS;
+  }
+}
+
+export function saveBarberSettings(settings: BarberSettings): void {
+  localStorage.setItem(STORAGE_KEYS.SETTINGS, JSON.stringify(settings));
 }

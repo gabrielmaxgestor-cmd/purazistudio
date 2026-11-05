@@ -12,10 +12,10 @@ import {
 } from 'lucide-react';
 import {
   Appointment,
-  AVAILABLE_HOURS,
   canRescheduleOrCancel,
   isTimeSlotAvailable,
   generateNext90Days,
+  generateHoursForSchedule,
   DayOption,
 } from '../utils/bookingLogic';
 import {
@@ -23,6 +23,7 @@ import {
   saveAppointment,
   updateAppointmentStatus,
   getStoredBlockedSlots,
+  getStoredBarberSettings,
 } from '../utils/storage';
 
 interface ConsultAppointmentModalProps {
@@ -46,7 +47,10 @@ export const ConsultAppointmentModal: React.FC<ConsultAppointmentModalProps> = (
   const [isRescheduling, setIsRescheduling] = useState(false);
   const [rescheduleDay, setRescheduleDay] = useState<DayOption | null>(null);
   const [rescheduleTime, setRescheduleTime] = useState<string | null>(null);
-  const [rescheduleDays] = useState<DayOption[]>(() => generateNext90Days());
+
+  const settings = getStoredBarberSettings();
+  const rescheduleDays = generateNext90Days(new Date(), settings);
+  const hours = generateHoursForSchedule(settings);
 
   if (!isOpen) return null;
 
@@ -79,17 +83,18 @@ export const ConsultAppointmentModal: React.FC<ConsultAppointmentModalProps> = (
   const handleCancelAppointment = () => {
     if (!foundAppointment) return;
 
+    // Enforce 12-hour minimum notice
     const check = canRescheduleOrCancel(
       foundAppointment.dateStr,
       foundAppointment.timeStr,
       new Date(),
-      2
+      12
     );
 
     if (!check.allowed) {
       setActionMessage({
         type: 'error',
-        text: check.reason || 'Não é possível cancelar com menos de 2 horas de antecedência.',
+        text: check.reason || 'Cancelamentos devem ser feitos com no mínimo 12 horas de antecedência.',
       });
       return;
     }
@@ -100,7 +105,7 @@ export const ConsultAppointmentModal: React.FC<ConsultAppointmentModalProps> = (
       setFoundAppointment(refreshed || null);
       setActionMessage({
         type: 'success',
-        text: 'Agendamento cancelado com sucesso. O horário foi liberado para outros clientes.',
+        text: 'Agendamento cancelado com sucesso. O horário foi liberado na agenda.',
       });
       if (onAppointmentsUpdated) onAppointmentsUpdated();
     }
@@ -120,7 +125,8 @@ export const ConsultAppointmentModal: React.FC<ConsultAppointmentModalProps> = (
       rescheduleDay.dateStr,
       rescheduleTime,
       getStoredAppointments(),
-      getStoredBlockedSlots()
+      getStoredBlockedSlots(),
+      settings
     );
 
     if (!available) {
@@ -148,6 +154,10 @@ export const ConsultAppointmentModal: React.FC<ConsultAppointmentModalProps> = (
     if (onAppointmentsUpdated) onAppointmentsUpdated();
   };
 
+  const canModify = foundAppointment
+    ? canRescheduleOrCancel(foundAppointment.dateStr, foundAppointment.timeStr, new Date(), 12).allowed
+    : false;
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       {/* Backdrop */}
@@ -159,36 +169,83 @@ export const ConsultAppointmentModal: React.FC<ConsultAppointmentModalProps> = (
 
       {/* Modal Dialog */}
       <div
-        className="relative w-full max-w-lg bg-[#151517] text-white border border-neutral-800 shadow-2xl p-6 sm:p-8 z-10 animate-in fade-in zoom-in-95 duration-200 overflow-y-auto max-h-[90vh]"
+        className="relative w-full max-w-xl bg-[#141416] border border-neutral-800 text-white shadow-2xl p-6 sm:p-8 z-10 animate-in fade-in zoom-in-95 duration-200 overflow-y-auto max-h-[90vh]"
         role="dialog"
         aria-modal="true"
-        aria-label="Consultar Meu Agendamento"
+        aria-labelledby="consult-title"
       >
-        {/* Header */}
-        <div className="flex items-center justify-between border-b border-neutral-800 pb-4 mb-6">
-          <div>
-            <span className="text-[10px] tracking-[0.25em] uppercase text-neutral-400 font-bold block">
-              PURΛZI Studio
+        <button
+          onClick={onClose}
+          className="absolute top-5 right-5 text-neutral-400 hover:text-white p-2 transition-colors cursor-pointer"
+          aria-label="Fechar consulta"
+        >
+          <X className="w-5 h-5" />
+        </button>
+
+        <div className="mb-6">
+          <div className="flex items-center gap-2 mb-1.5">
+            <span className="font-['Cinzel'] tracking-[0.2em] text-sm font-bold text-amber-200">
+              PURΛZI
             </span>
-            <h3 className="font-['Cinzel'] text-xl text-white font-bold">
-              Consultar Meu Agendamento
-            </h3>
+            <span className="text-[10px] tracking-widest uppercase bg-neutral-800 text-neutral-300 px-2 py-0.5">
+              Área do Cliente
+            </span>
           </div>
-          <button
-            onClick={onClose}
-            className="text-neutral-400 hover:text-white p-2 rounded-full hover:bg-neutral-800 transition-colors"
-            aria-label="Fechar consulta"
-          >
-            <X className="w-5 h-5" />
-          </button>
+          <h2 id="consult-title" className="font-['Cinzel'] text-xl sm:text-2xl text-white font-bold">
+            Consultar Meu Agendamento
+          </h2>
+          <p className="text-xs text-neutral-400 mt-1 font-sans">
+            Informe seu WhatsApp ou código (ex: PRZ-4921) para visualizar, remarcar ou cancelar até 12 horas antes.
+          </p>
         </div>
 
-        {/* Action Alerts */}
+        {/* Search Form */}
+        <form onSubmit={handleSearch} className="space-y-4 mb-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div>
+              <label htmlFor="q-code" className="block text-[11px] uppercase tracking-wider text-neutral-400 mb-1">
+                Código do Agendamento
+              </label>
+              <input
+                id="q-code"
+                type="text"
+                placeholder="Ex: PRZ-4921"
+                value={queryCode}
+                onChange={(e) => setQueryCode(e.target.value)}
+                className="w-full bg-[#19191c] border border-neutral-800 px-3.5 py-2.5 text-xs text-white uppercase placeholder:normal-case placeholder:text-neutral-600 focus:outline-none focus:border-amber-200 font-mono rounded-none"
+              />
+            </div>
+
+            <div>
+              <label htmlFor="q-phone" className="block text-[11px] uppercase tracking-wider text-neutral-400 mb-1">
+                Seu WhatsApp
+              </label>
+              <input
+                id="q-phone"
+                type="tel"
+                placeholder="(24) 99999-9999"
+                value={queryPhone}
+                onChange={(e) => setQueryPhone(e.target.value)}
+                className="w-full bg-[#19191c] border border-neutral-800 px-3.5 py-2.5 text-xs text-white placeholder:text-neutral-600 focus:outline-none focus:border-amber-200 font-sans rounded-none"
+              />
+            </div>
+          </div>
+
+          <button
+            type="submit"
+            className="w-full bg-white text-black hover:bg-neutral-200 py-3 text-xs uppercase tracking-[0.2em] font-bold transition-colors flex items-center justify-center gap-2 rounded-none cursor-pointer"
+          >
+            <Search className="w-4 h-4" />
+            <span>Localizar Agendamento</span>
+          </button>
+        </form>
+
+        {/* Action message */}
         {actionMessage && (
           <div
-            className={`p-3.5 rounded text-xs mb-5 flex items-start gap-2.5 ${
+            className={`p-3.5 mb-6 text-xs flex items-start gap-2.5 rounded-none ${
               actionMessage.type === 'success'
-                ? 'bg-emerald-950/60 border border-emerald-800/60 text-emerald-200'
+                ? 'bg-emerald-950/60 border border-emerald-500/40 text-emerald-200'
                 : 'bg-red-950/60 border border-red-800/60 text-red-200'
             }`}
           >
@@ -201,235 +258,179 @@ export const ConsultAppointmentModal: React.FC<ConsultAppointmentModalProps> = (
           </div>
         )}
 
-        {/* Search Form */}
-        <form onSubmit={handleSearch} className="space-y-4 mb-6">
-          <p className="text-xs text-neutral-400">
-            Digite o <strong>Código do Agendamento</strong> (ex: PRZ-4921) e/ou seu <strong>WhatsApp</strong> para localizar sua reserva:
-          </p>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <div>
-              <label htmlFor="search-code" className="block text-[11px] uppercase tracking-wider text-neutral-400 mb-1">
-                Código (PRZ-XXXX)
-              </label>
-              <input
-                id="search-code"
-                type="text"
-                placeholder="Ex: PRZ-4921"
-                value={queryCode}
-                onChange={(e) => setQueryCode(e.target.value.toUpperCase())}
-                className="w-full bg-[#1b1b1e] border border-neutral-800 text-white px-3.5 py-2.5 text-xs font-mono uppercase focus:outline-none focus:border-amber-200 rounded-none placeholder:text-neutral-600"
-              />
-            </div>
-
-            <div>
-              <label htmlFor="search-phone" className="block text-[11px] uppercase tracking-wider text-neutral-400 mb-1">
-                WhatsApp
-              </label>
-              <input
-                id="search-phone"
-                type="text"
-                placeholder="(24) 99999-9999"
-                value={queryPhone}
-                onChange={(e) => setQueryPhone(e.target.value)}
-                className="w-full bg-[#1b1b1e] border border-neutral-800 text-white px-3.5 py-2.5 text-xs focus:outline-none focus:border-amber-200 rounded-none placeholder:text-neutral-600"
-              />
-            </div>
-          </div>
-
-          <button
-            type="submit"
-            className="w-full bg-white text-black hover:bg-neutral-200 py-3 text-xs uppercase tracking-[0.2em] font-bold rounded-none flex items-center justify-center gap-2 transition-colors cursor-pointer"
-          >
-            <Search className="w-4 h-4" />
-            <span>Localizar Agendamento</span>
-          </button>
-        </form>
-
-        {/* Search Result */}
-        {searchAttempted && !foundAppointment && (
-          <div className="bg-[#1b1b1e] border border-neutral-800 p-6 text-center text-xs text-neutral-400 space-y-2">
-            <p>Nenhum agendamento encontrado com os dados informados.</p>
-            <p className="text-[11px] text-neutral-500">
-              Verifique se digitou o código corretamente ou chame nosso suporte no WhatsApp (24) 99999-9999.
-            </p>
-          </div>
-        )}
-
-        {foundAppointment && (
-          <div className="space-y-4">
-            {/* Card Details */}
-            <div className="bg-[#1b1b1e] border border-neutral-800 p-5 space-y-3">
-              <div className="flex items-center justify-between border-b border-neutral-800 pb-3">
-                <div>
-                  <span className="text-[10px] text-neutral-500 uppercase tracking-widest">Código</span>
-                  <p className="font-mono text-base font-bold text-amber-200">{foundAppointment.code}</p>
-                </div>
-
-                <span
-                  className={`text-[10px] uppercase tracking-wider px-2.5 py-1 font-bold ${
-                    foundAppointment.status === 'confirmed'
-                      ? 'bg-emerald-950 text-emerald-300 border border-emerald-800'
-                      : foundAppointment.status === 'cancelled'
-                      ? 'bg-red-950 text-red-300 border border-red-800'
-                      : 'bg-neutral-800 text-neutral-400'
-                  }`}
-                >
-                  {foundAppointment.status === 'confirmed'
-                    ? 'Confirmado'
-                    : foundAppointment.status === 'cancelled'
-                    ? 'Cancelado'
-                    : 'Concluído'}
-                </span>
+        {/* Found Result Card */}
+        {foundAppointment ? (
+          <div className="bg-[#19191c] border border-neutral-800 p-5 space-y-4">
+            <div className="flex items-center justify-between border-b border-neutral-800 pb-3">
+              <div>
+                <span className="text-[10px] uppercase tracking-wider text-neutral-400 block font-mono">Código</span>
+                <span className="font-mono text-base font-bold text-amber-200">{foundAppointment.code}</span>
               </div>
+              <span
+                className={`text-[10px] uppercase tracking-wider px-2 py-0.5 font-bold ${
+                  foundAppointment.status === 'confirmed'
+                    ? 'bg-emerald-950 text-emerald-300 border border-emerald-800/60'
+                    : foundAppointment.status === 'completed'
+                    ? 'bg-neutral-800 text-neutral-300'
+                    : 'bg-red-950 text-red-400 border border-red-800/60'
+                }`}
+              >
+                {foundAppointment.status === 'confirmed'
+                  ? 'Confirmado'
+                  : foundAppointment.status === 'completed'
+                  ? 'Concluído'
+                  : 'Cancelado'}
+              </span>
+            </div>
 
-              <div className="space-y-2 text-xs">
-                <div className="flex justify-between">
-                  <span className="text-neutral-400">Cliente:</span>
-                  <span className="text-white font-medium">{foundAppointment.clientName}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-neutral-400">Serviço:</span>
-                  <span className="text-white font-medium">{foundAppointment.serviceName}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-neutral-400">Data marcada:</span>
-                  <span className="text-white font-medium">{foundAppointment.dateStr}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-neutral-400">Horário:</span>
-                  <span className="text-amber-200 font-bold text-sm">{foundAppointment.timeStr}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-neutral-400">Valor a pagar:</span>
-                  <span className="text-white font-bold">R$ {foundAppointment.price.toFixed(2).replace('.', ',')}</span>
-                </div>
-                <div className="flex justify-between text-[11px] text-neutral-500 pt-1 border-t border-neutral-800/80">
-                  <span>Local:</span>
-                  <span>Av. Nilo Peçanha, 1027 - Valença/RJ</span>
-                </div>
+            <div className="grid grid-cols-2 gap-3 text-xs">
+              <div>
+                <span className="text-neutral-500 block text-[11px]">Cliente</span>
+                <span className="font-medium text-white">{foundAppointment.clientName}</span>
+              </div>
+              <div>
+                <span className="text-neutral-500 block text-[11px]">Serviço</span>
+                <span className="font-medium text-white">{foundAppointment.serviceName}</span>
+              </div>
+              <div>
+                <span className="text-neutral-500 block text-[11px]">Data &amp; Horário</span>
+                <span className="font-bold text-amber-200">{foundAppointment.dateStr} às {foundAppointment.timeStr}</span>
+              </div>
+              <div>
+                <span className="text-neutral-500 block text-[11px]">Valor</span>
+                <span className="font-bold text-white">R$ {foundAppointment.price.toFixed(2).replace('.', ',')}</span>
               </div>
             </div>
 
-            {/* Rescheduling Form Drawer Mode */}
-            {isRescheduling && (
-              <div className="bg-[#18181b] border border-amber-200/40 p-4 space-y-4 text-xs">
-                <div className="flex items-center justify-between">
-                  <h4 className="font-bold text-white uppercase tracking-wider text-[11px]">
-                    Escolha a nova data e horário
-                  </h4>
-                  <button
-                    onClick={() => setIsRescheduling(false)}
-                    className="text-neutral-400 hover:text-white text-[11px]"
-                  >
-                    Cancelar remarcação
-                  </button>
-                </div>
-
-                {/* Day selector */}
-                <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-thin">
-                  {rescheduleDays.slice(0, 30).map((d) => (
+            {/* Actions for Active Appointment */}
+            {foundAppointment.status === 'confirmed' && (
+              <div className="pt-3 border-t border-neutral-800 flex flex-col sm:flex-row gap-2">
+                {canModify ? (
+                  <>
                     <button
-                      key={d.dateStr}
-                      type="button"
-                      onClick={() => {
-                        setRescheduleDay(d);
-                        setRescheduleTime(null);
-                      }}
-                      className={`flex-shrink-0 w-16 py-2 text-center border text-[11px] ${
-                        rescheduleDay?.dateStr === d.dateStr
-                          ? 'border-amber-200 bg-neutral-900 text-white font-bold'
-                          : 'border-neutral-800 bg-neutral-900/50 text-neutral-400'
-                      }`}
+                      onClick={() => setIsRescheduling(!isRescheduling)}
+                      className="flex-1 bg-neutral-800 hover:bg-neutral-700 text-white py-2.5 px-3 text-xs uppercase tracking-wider font-semibold transition-colors flex items-center justify-center gap-1.5 cursor-pointer"
                     >
-                      <span>{d.dayName}</span>
-                      <strong className="block text-sm">{d.dayNumber}</strong>
+                      <RefreshCw className="w-3.5 h-3.5 text-amber-200" />
+                      <span>{isRescheduling ? 'Fechar Remarcação' : 'Remarcar Horário'}</span>
                     </button>
-                  ))}
-                </div>
 
-                {/* Hours grid */}
-                <div className="grid grid-cols-4 gap-2">
-                  {AVAILABLE_HOURS.map((hr) => {
-                    const avail = rescheduleDay
-                      ? isTimeSlotAvailable(rescheduleDay.dateStr, hr, getStoredAppointments(), getStoredBlockedSlots())
-                      : false;
-                    const isSel = rescheduleTime === hr;
+                    <button
+                      onClick={handleCancelAppointment}
+                      className="bg-red-950/60 hover:bg-red-900/80 border border-red-800/50 text-red-300 py-2.5 px-4 text-xs uppercase tracking-wider font-semibold transition-colors cursor-pointer"
+                    >
+                      Cancelar Horário
+                    </button>
+                  </>
+                ) : (
+                  <p className="text-[11px] text-amber-200/90 bg-amber-950/30 border border-amber-800/40 p-2.5 text-center w-full">
+                    Este agendamento ocorre em menos de 12 horas. Remarcações e cancelamentos só podem ser solicitados diretamente pelo WhatsApp.
+                  </p>
+                )}
+              </div>
+            )}
 
-                    if (!avail) {
-                      return (
-                        <div key={hr} className="py-2 text-center text-[11px] text-neutral-600 line-through bg-neutral-900">
-                          {hr}
-                        </div>
-                      );
-                    }
+            {/* Rescheduling Sub-panel */}
+            {isRescheduling && foundAppointment.status === 'confirmed' && (
+              <div className="mt-4 pt-4 border-t border-neutral-800 space-y-4 animate-in fade-in duration-200">
+                <h4 className="text-xs uppercase tracking-wider text-amber-200 font-semibold flex items-center gap-1.5">
+                  <Calendar className="w-3.5 h-3.5" />
+                  <span>Escolha a Nova Data &amp; Horário</span>
+                </h4>
 
+                {/* Days carousel */}
+                <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-none">
+                  {rescheduleDays.slice(0, 30).map((day) => {
+                    const isSelected = rescheduleDay?.dateStr === day.dateStr;
                     return (
                       <button
-                        key={hr}
-                        type="button"
-                        onClick={() => setRescheduleTime(hr)}
-                        className={`py-2 text-center text-[11px] border font-medium ${
-                          isSel
+                        key={day.dateStr}
+                        disabled={day.isOffDay}
+                        onClick={() => {
+                          setRescheduleDay(day);
+                          setRescheduleTime(null);
+                        }}
+                        className={`shrink-0 w-16 py-2 px-1 text-center border text-xs cursor-pointer ${
+                          day.isOffDay
+                            ? 'border-neutral-900 bg-neutral-950 text-neutral-600 opacity-40 cursor-not-allowed'
+                            : isSelected
                             ? 'border-amber-200 bg-neutral-900 text-amber-200 font-bold'
-                            : 'border-neutral-800 bg-[#1f1f23] text-neutral-200 hover:bg-neutral-800'
+                            : 'border-neutral-800 bg-[#1c1c20] text-neutral-300 hover:border-neutral-700'
                         }`}
                       >
-                        {hr}
+                        <span className="text-[9px] uppercase block text-neutral-400">{day.dayName}</span>
+                        <span className="text-sm font-bold block">{day.dayNumber}</span>
+                        <span className="text-[9px] uppercase block text-neutral-500">{day.monthName}</span>
                       </button>
                     );
                   })}
                 </div>
 
+                {/* Available Hours */}
+                {rescheduleDay && (
+                  <div>
+                    <span className="text-[11px] text-neutral-400 block mb-2 font-mono">
+                      Horários para {rescheduleDay.fullLabel}:
+                    </span>
+                    <div className="grid grid-cols-4 gap-2">
+                      {hours.map((hour) => {
+                        const available = isTimeSlotAvailable(
+                          rescheduleDay.dateStr,
+                          hour,
+                          getStoredAppointments(),
+                          getStoredBlockedSlots(),
+                          settings
+                        );
+                        const isSelected = rescheduleTime === hour;
+
+                        if (!available) {
+                          return (
+                            <span
+                              key={hour}
+                              className="py-1.5 px-2 border border-neutral-900 text-neutral-600 text-center text-xs line-through"
+                            >
+                              {hour}
+                            </span>
+                          );
+                        }
+
+                        return (
+                          <button
+                            key={hour}
+                            onClick={() => setRescheduleTime(hour)}
+                            className={`py-1.5 px-2 border text-center text-xs cursor-pointer ${
+                              isSelected
+                                ? 'border-amber-200 bg-neutral-900 text-amber-200 font-bold'
+                                : 'border-neutral-800 bg-[#1c1c20] text-neutral-300 hover:border-neutral-600'
+                            }`}
+                          >
+                            {hour}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+
                 <button
-                  type="button"
                   onClick={handleConfirmReschedule}
-                  className="w-full bg-white text-black font-bold py-2.5 text-xs uppercase tracking-wider rounded-none hover:bg-neutral-200 cursor-pointer"
+                  disabled={!rescheduleDay || !rescheduleTime}
+                  className={`w-full py-2.5 text-xs uppercase tracking-wider font-bold transition-all ${
+                    rescheduleDay && rescheduleTime
+                      ? 'bg-amber-400 text-black hover:bg-amber-300 cursor-pointer shadow-md'
+                      : 'bg-neutral-800 text-neutral-600 cursor-not-allowed'
+                  }`}
                 >
-                  Salvar Nova Data &amp; Horário
-                </button>
-              </div>
-            )}
-
-            {/* Actions for Confirmed appointments */}
-            {foundAppointment.status === 'confirmed' && !isRescheduling && (
-              <div className="grid grid-cols-2 gap-3 pt-2">
-                <button
-                  type="button"
-                  onClick={() => {
-                    const check = canRescheduleOrCancel(
-                      foundAppointment.dateStr,
-                      foundAppointment.timeStr,
-                      new Date(),
-                      2
-                    );
-                    if (!check.allowed) {
-                      setActionMessage({
-                        type: 'error',
-                        text: check.reason || 'Remarcações devem ser feitas com no mínimo 2h de antecedência.',
-                      });
-                      return;
-                    }
-                    setIsRescheduling(true);
-                  }}
-                  className="border border-neutral-700 hover:border-white py-2.5 px-3 text-xs uppercase tracking-wider text-neutral-200 hover:text-white flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
-                >
-                  <RefreshCw className="w-3.5 h-3.5 text-amber-200" />
-                  <span>Remarcar</span>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={handleCancelAppointment}
-                  className="border border-red-900/60 hover:bg-red-950/40 text-red-300 py-2.5 px-3 text-xs uppercase tracking-wider flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
-                >
-                  <X className="w-3.5 h-3.5" />
-                  <span>Cancelar</span>
+                  Confirmar Nova Data ({rescheduleTime || 'Selecione um horário'})
                 </button>
               </div>
             )}
           </div>
-        )}
+        ) : searchAttempted ? (
+          <div className="bg-[#19191c] border border-neutral-800 p-6 text-center text-xs text-neutral-400">
+            Nenhum agendamento encontrado para os dados informados. Verifique se o código ou o telefone com DDD estão corretos.
+          </div>
+        ) : null}
       </div>
     </div>
   );

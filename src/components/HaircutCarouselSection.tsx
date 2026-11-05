@@ -114,12 +114,12 @@ export const HaircutCarouselSection: React.FC = () => {
   return (
     <section
       id="secao-duvida-whatsapp"
-      className="relative w-full overflow-hidden bg-[#0a0a0c] py-20 sm:py-28 flex items-center justify-center border-t border-b border-neutral-800/80"
+      className="relative w-full h-full min-h-[520px] overflow-hidden bg-[#0d0d0f] py-12 sm:py-16 flex items-center justify-center"
       aria-label="Galeria de cortes e atendimento WhatsApp"
     >
-      {/* Background Animated Dual-Row Photo Carousel */}
-      <div className="absolute inset-0 flex flex-col justify-center gap-4 sm:gap-6 opacity-45 pointer-events-none select-none">
-        {/* Row 1: Left to Right (começa recuado e move para a direita) */}
+      {/* Background Animated Dual-Row Photo Carousel - Opacity adjusted for perfect readability */}
+      <div className="absolute inset-0 flex flex-col justify-center gap-4 sm:gap-6 opacity-30 pointer-events-none select-none">
+        {/* Row 1: Left to Right (começa recuado e move suavemente para a direita) */}
         <div className="flex overflow-hidden w-full">
           <div
             ref={row1Ref}
@@ -138,9 +138,9 @@ export const HaircutCarouselSection: React.FC = () => {
                   loading="lazy"
                   className="w-full h-full object-cover grayscale contrast-110 group-hover:grayscale-0 transition-all duration-700"
                 />
-                <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
+                <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/30 to-transparent" />
                 <div className="absolute bottom-3 left-3 right-3 text-left">
-                  <span className="text-[9px] uppercase tracking-wider text-amber-200/90 font-mono block">
+                  <span className="text-[10px] uppercase tracking-wider text-amber-300 font-mono block">
                     {photo.tag}
                   </span>
                   <p className="text-xs font-semibold text-white truncate font-sans">
@@ -152,7 +152,7 @@ export const HaircutCarouselSection: React.FC = () => {
           </div>
         </div>
 
-        {/* Row 2: Right to Left (move para a esquerda) */}
+        {/* Row 2: Right to Left (move suavemente para a esquerda) */}
         <div className="flex overflow-hidden w-full">
           <div
             ref={row2Ref}
@@ -170,9 +170,9 @@ export const HaircutCarouselSection: React.FC = () => {
                   loading="lazy"
                   className="w-full h-full object-cover grayscale contrast-110 group-hover:grayscale-0 transition-all duration-700"
                 />
-                <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
+                <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/30 to-transparent" />
                 <div className="absolute bottom-3 left-3 right-3 text-left">
-                  <span className="text-[9px] uppercase tracking-wider text-amber-200/90 font-mono block">
+                  <span className="text-[10px] uppercase tracking-wider text-amber-300 font-mono block">
                     {photo.tag}
                   </span>
                   <p className="text-xs font-semibold text-white truncate font-sans">
@@ -185,42 +185,47 @@ export const HaircutCarouselSection: React.FC = () => {
         </div>
       </div>
 
-      {/* Dark gradient vignettes top & bottom to blend seamlessly */}
-      <div className="absolute inset-x-0 top-0 h-24 bg-gradient-to-b from-[#0a0a0c] to-transparent pointer-events-none" />
-      <div className="absolute inset-x-0 bottom-0 h-24 bg-gradient-to-t from-[#0a0a0c] to-transparent pointer-events-none" />
-      <div className="absolute inset-y-0 left-0 w-24 bg-gradient-to-r from-[#0a0a0c] to-transparent pointer-events-none z-1" />
-      <div className="absolute inset-y-0 right-0 w-24 bg-gradient-to-l from-[#0a0a0c] to-transparent pointer-events-none z-1" />
+      {/* Dark gradient vignettes top & bottom to blend seamlessly into canvas */}
+      <div className="absolute inset-x-0 top-0 h-28 bg-gradient-to-b from-[#0f0f0f] to-transparent pointer-events-none z-10" />
+      <div className="absolute inset-x-0 bottom-0 h-28 bg-gradient-to-t from-[#0f0f0f] to-transparent pointer-events-none z-10" />
+      <div className="absolute inset-y-0 left-0 w-28 bg-gradient-to-r from-[#0f0f0f] to-transparent pointer-events-none z-10" />
+      <div className="absolute inset-y-0 right-0 w-28 bg-gradient-to-l from-[#0f0f0f] to-transparent pointer-events-none z-10" />
 
-      {/* Overlaid Center Content: Exact text from prompt + WhatsApp Button */}
-      <div className="relative z-10 max-w-xl mx-4 sm:mx-auto text-center bg-[#141416]/90 backdrop-blur-md p-8 sm:p-12 border border-white/15 shadow-2xl">
-        <span className="text-[10px] tracking-[0.3em] uppercase text-amber-200/90 font-bold block mb-2 font-mono">
-          ATENDIMENTO DIRETO
-        </span>
+      {/* Overlaid Center Content Card: High Contrast, 100% Legible, Pure Luxury Design */}
+      <div className="relative z-20 max-w-2xl mx-4 sm:mx-auto text-center bg-[#111114]/95 backdrop-blur-xl p-8 sm:p-14 border border-neutral-700/80 shadow-[0_20px_60px_rgba(0,0,0,0.95)]">
+        <div className="flex items-center justify-center gap-2 mb-3">
+          <span className="w-2 h-2 rounded-full bg-amber-400 animate-pulse" />
+          <span className="text-xs uppercase tracking-[0.3em] text-amber-400 font-mono font-bold block">
+            ATENDIMENTO &amp; VISAGISMO
+          </span>
+        </div>
 
         {/* The exact text requested: "Dúvida? Chama no WhatsApp." */}
-        <h2 className="font-['Cinzel'] text-2xl sm:text-3xl lg:text-4xl font-bold text-white tracking-wide leading-tight mb-4">
+        <h2 className="text-2xl sm:text-4xl md:text-5xl font-extrabold text-white tracking-tight font-sans leading-tight mb-4 drop-shadow-md">
           Dúvida? Chama no WhatsApp.
         </h2>
 
-        <p className="text-xs sm:text-sm text-neutral-300 font-sans leading-relaxed max-w-md mx-auto mb-8">
+        <p className="text-sm sm:text-base text-neutral-200 font-sans leading-relaxed max-w-lg mx-auto mb-8 font-normal">
           Quer saber qual corte combina mais com seu formato de rosto ou tem alguma dúvida sobre horários e serviços?
           Fale diretamente com o nosso barbeiro em tempo real.
         </p>
 
-        {/* WhatsApp Button */}
+        {/* WhatsApp Button - High impact CTA */}
         <a
           href="https://wa.me/5524999999999?text=Ol%C3%A1%21%20Gostaria%20de%20tirar%20uma%20d%C3%BAvida%20sobre%20os%20servi%C3%A7os%20da%20PURAZI%20Studio."
           target="_blank"
           rel="noopener noreferrer"
-          className="inline-flex items-center justify-center gap-3 bg-[#25D366] hover:bg-[#20bd5a] text-black font-bold py-4 px-8 text-xs sm:text-sm uppercase tracking-[0.2em] transition-all transform hover:scale-[1.02] active:scale-[0.98] shadow-xl rounded-none group"
+          className="inline-flex items-center justify-center gap-3.5 bg-[#25D366] hover:bg-[#20bd5a] text-black font-extrabold py-4 sm:py-5 px-8 sm:px-12 text-xs sm:text-sm uppercase tracking-[0.22em] transition-all duration-300 transform hover:-translate-y-0.5 active:translate-y-0 shadow-[0_10px_30px_rgba(37,211,102,0.35)] hover:shadow-[0_15px_40px_rgba(37,211,102,0.55)] rounded-none group cursor-pointer"
         >
           <MessageCircle className="w-5 h-5 fill-current" />
           <span>Falar no WhatsApp</span>
           <ArrowUpRight className="w-4 h-4 transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
         </a>
 
-        <div className="mt-5 text-[11px] text-neutral-400 font-sans">
-          <span>(24) 99999-9999</span> • <span>Resposta rápida de Seg a Sáb</span>
+        <div className="mt-5 text-xs text-neutral-400 font-sans flex items-center justify-center gap-2">
+          <span className="font-semibold text-neutral-200 font-mono">(24) 99999-9999</span>
+          <span>•</span>
+          <span>Atendimento rápido de Seg a Sáb</span>
         </div>
       </div>
     </section>
