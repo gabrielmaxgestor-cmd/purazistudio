@@ -1,10 +1,7 @@
 @import "tailwindcss";
 
-* {
-  margin: 0;
-  padding: 0;
-  box-sizing: border-box;
-}
+/* O reset (margin/padding/box-sizing) já vem do preflight do Tailwind.
+   Um "* { margin:0; padding:0 }" fora de @layer anula todas as classes p-*, m-*, space-* */
 
 html, body {
   background: #0f0f0f;
@@ -16,8 +13,17 @@ html, body {
 }
 
 body {
-  padding-top: env(safe-area-inset-top, 0px);
   padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+/* Reserva o espaço da navbar fixa (h-16 no mobile / h-20 no desktop + safe-area) */
+.nav-spacer {
+  height: calc(4rem + env(safe-area-inset-top, 0px));
+}
+@media (min-width: 640px) {
+  .nav-spacer {
+    height: calc(5rem + env(safe-area-inset-top, 0px));
+  }
 }
 
 .page {
