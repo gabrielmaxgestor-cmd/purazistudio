@@ -53,75 +53,64 @@ export const Navbar: React.FC<NavbarProps> = ({
   return (
     <>
       <header
-        className={`fixed top-0 left-0 right-0 z-40 transition-all duration-300 ${
-          isScrolled
-            ? 'bg-[#141416]/95 backdrop-blur-md border-b border-white/10 shadow-2xl py-4 sm:py-5'
-            : 'bg-transparent py-6 sm:py-8'
+        className={`fixed top-0 left-0 right-0 z-40 bg-[#141416]/95 backdrop-blur-md border-b border-white/10 transition-shadow duration-300 pt-[env(safe-area-inset-top,0px)] ${
+          isScrolled ? 'shadow-2xl' : 'shadow-none'
         }`}
       >
-        <div className="max-w-[1366px] mx-auto px-5 sm:px-10 flex items-center justify-between">
-          {/* Logo PURΛZI à esquerda - ampliada e destacada */}
+        <div className="max-w-[1366px] mx-auto h-16 sm:h-20 px-4 sm:px-10 grid grid-cols-[auto_1fr_auto] md:grid-cols-[1fr_auto_1fr] items-center gap-3">
+          {/* Logo à esquerda */}
           <a
             href="#top"
-            className="flex items-center gap-2 group cursor-pointer"
+            className="flex items-center justify-self-start cursor-pointer"
             aria-label="PURAZI Studio Início"
           >
             <img
-              src={isScrolled ? '/assets/logo-purazi-white.png' : '/assets/logo-purazi-black.png'}
+              src="/assets/logo-purazi-white.png"
               alt="PURΛZI Studio"
-              className="h-9 sm:h-12 w-auto object-contain transition-transform group-hover:scale-103 drop-shadow-sm"
+              className="h-7 sm:h-10 w-auto object-contain"
             />
           </a>
 
-          {/* Desktop Links: Serviços · Localização · Consultar agendamento */}
-          <nav className="hidden md:flex items-center gap-6 lg:gap-8">
+          {/* Links centralizados de verdade (coluna central do grid) */}
+          <nav className="hidden md:flex items-center justify-center gap-6 lg:gap-8">
             <button
               onClick={onOpenServices}
-              className={`text-xs sm:text-sm uppercase tracking-[0.25em] font-medium transition-colors cursor-pointer ${
-                isScrolled ? 'text-neutral-300 hover:text-white' : 'text-neutral-900 hover:text-black font-semibold'
-              }`}
+              className="text-xs uppercase tracking-[0.2em] font-medium text-neutral-300 hover:text-white transition-colors cursor-pointer whitespace-nowrap"
             >
               Serviços
             </button>
-            <span className={`text-xs select-none ${isScrolled ? 'text-neutral-600' : 'text-neutral-500'}`}>·</span>
+            <span className="text-xs select-none text-neutral-600" aria-hidden="true">·</span>
             <button
               onClick={scrollToLocation}
-              className={`text-xs sm:text-sm uppercase tracking-[0.25em] font-medium transition-colors cursor-pointer ${
-                isScrolled ? 'text-neutral-300 hover:text-white' : 'text-neutral-900 hover:text-black font-semibold'
-              }`}
+              className="text-xs uppercase tracking-[0.2em] font-medium text-neutral-300 hover:text-white transition-colors cursor-pointer whitespace-nowrap"
             >
               Localização
             </button>
-            <span className={`text-xs select-none ${isScrolled ? 'text-neutral-600' : 'text-neutral-500'}`}>·</span>
+            <span className="text-xs select-none text-neutral-600" aria-hidden="true">·</span>
             <button
               onClick={onOpenConsult}
-              className={`text-xs sm:text-sm uppercase tracking-[0.25em] font-medium transition-colors cursor-pointer ${
-                isScrolled ? 'text-neutral-300 hover:text-white' : 'text-neutral-900 hover:text-black font-semibold'
-              }`}
+              className="text-xs uppercase tracking-[0.2em] font-medium text-neutral-300 hover:text-white transition-colors cursor-pointer whitespace-nowrap"
             >
               Consultar agendamento
             </button>
           </nav>
 
-          {/* Botão de Ação: Agendar destacado de forma única e impactante */}
-          <div className="flex items-center gap-3 sm:gap-4">
+          {/* Ações à direita: Agendar + menu mobile */}
+          <div className="col-start-3 flex items-center justify-self-end gap-2 sm:gap-3">
             <button
               onClick={onOpenBooking}
-              className="relative inline-flex items-center justify-center gap-2.5 bg-black text-white hover:bg-amber-400 hover:text-black text-xs sm:text-sm tracking-[0.25em] uppercase font-bold px-6 sm:px-9 py-3 sm:py-3.5 rounded-none border-2 border-amber-400/90 hover:border-amber-400 shadow-[0_0_20px_rgba(251,191,36,0.35)] hover:shadow-[0_0_30px_rgba(251,191,36,0.65)] transition-all duration-300 cursor-pointer transform hover:-translate-y-0.5 active:translate-y-0 group"
+              className="inline-flex items-center justify-center gap-2 h-10 sm:h-11 bg-black text-white hover:bg-amber-400 hover:text-black text-[11px] sm:text-xs tracking-[0.2em] uppercase font-bold px-4 sm:px-7 border-2 border-amber-400/90 hover:border-amber-400 transition-colors duration-300 cursor-pointer group"
             >
-              <span className="w-2 h-2 rounded-full bg-amber-400 group-hover:bg-black transition-colors animate-pulse" />
+              <span className="w-1.5 h-1.5 rounded-full bg-amber-400 group-hover:bg-black transition-colors animate-pulse" />
               <span>Agendar</span>
             </button>
 
-            {/* Mobile Hamburger Button */}
             <button
               onClick={() => setMobileMenuOpen(true)}
-              className={`md:hidden p-2 transition-colors focus:outline-none cursor-pointer ${
-                isScrolled ? 'text-white hover:text-neutral-300' : 'text-neutral-950 hover:text-neutral-700'
-              }`}
+              className="md:hidden h-10 w-10 inline-flex items-center justify-center text-white hover:text-neutral-300 transition-colors focus:outline-none cursor-pointer"
               aria-label="Abrir menu de navegação"
             >
-              <Menu className="w-7 h-7" />
+              <Menu className="w-6 h-6" />
             </button>
           </div>
         </div>
