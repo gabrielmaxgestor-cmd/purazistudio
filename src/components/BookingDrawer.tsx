@@ -32,6 +32,8 @@ interface BookingDrawerProps {
   onClose: () => void;
   services: Service[];
   preselectedServiceId?: string | null;
+  preselectedDateStr?: string;
+  preselectedTimeStr?: string;
   onBookingComplete?: (appointment: Appointment) => void;
 }
 
@@ -40,6 +42,8 @@ export const BookingDrawer: React.FC<BookingDrawerProps> = ({
   onClose,
   services,
   preselectedServiceId,
+  preselectedDateStr,
+  preselectedTimeStr,
   onBookingComplete,
 }) => {
   const [step, setStep] = useState<1 | 2 | 3 | 4>(1);
@@ -64,9 +68,17 @@ export const BookingDrawer: React.FC<BookingDrawerProps> = ({
     if (isOpen) {
       const allDays = generateNext90Days();
       setDays(allDays);
-      if (!selectedDay && allDays.length > 0) {
-        setSelectedDay(allDays[0]);
+      let initialDay = allDays[0];
+      if (preselectedDateStr) {
+        const foundDay = allDays.find(d => d.dateStr === preselectedDateStr);
+        if (foundDay) initialDay = foundDay;
       }
+      setSelectedDay(initialDay);
+
+      if (preselectedTimeStr) {
+        setSelectedTime(preselectedTimeStr);
+      }
+
       setBlockedSlots(getStoredBlockedSlots());
       setAppointments(getStoredAppointments());
 
@@ -74,8 +86,14 @@ export const BookingDrawer: React.FC<BookingDrawerProps> = ({
         const found = services.find(s => s.id === preselectedServiceId);
         if (found) {
           setSelectedService(found);
-          setStep(2);
+          if (preselectedDateStr && preselectedTimeStr) {
+            setStep(3);
+          } else {
+            setStep(2);
+          }
         }
+      } else if (preselectedDateStr && preselectedTimeStr) {
+        setStep(1);
       }
     } else {
       // Reset if closed and not completed
@@ -102,7 +120,11 @@ export const BookingDrawer: React.FC<BookingDrawerProps> = ({
 
   const handleSelectService = (service: Service) => {
     setSelectedService(service);
-    setStep(2);
+    if (selectedDay && selectedTime) {
+      setStep(3);
+    } else {
+      setStep(2);
+    }
   };
 
   const handleSelectDay = (day: DayOption) => {
