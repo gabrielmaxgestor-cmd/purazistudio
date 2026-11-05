@@ -62,6 +62,9 @@ export default function App() {
         onOpenAdmin={() => setAdminOpen(true)}
       />
 
+      {/* Espaçador: impede que a navbar fixa cubra o topo do hero */}
+      <div className="nav-spacer" aria-hidden="true" />
+
       {/* ========================================================================= */}
       {/* ESTRUTURA ORIGINAL FIEL AO DESIGN ANEXADO PELO USUÁRIO                    */}
       {/* Imagem original com 100% de nitidez, sem manchas ou blocos cortados       */}
@@ -157,7 +160,7 @@ export default function App() {
           <button
             type="button"
             onClick={() => handleOpenBookingWithService()}
-            className="group relative inline-flex items-center justify-center gap-3.5 bg-black text-white hover:bg-neutral-900 border-2 border-amber-400 hover:border-amber-300 px-8 sm:px-14 py-4 sm:py-5 text-xs sm:text-sm md:text-base font-bold tracking-[0.25em] uppercase rounded-none shadow-[0_12px_35px_rgba(0,0,0,0.85),0_0_25px_rgba(251,191,36,0.35)] hover:shadow-[0_15px_45px_rgba(0,0,0,0.95),0_0_35px_rgba(251,191,36,0.6)] transition-all duration-300 transform hover:-translate-y-1 active:translate-y-0 cursor-pointer"
+            className="group relative inline-flex items-center justify-center gap-2.5 sm:gap-3.5 bg-black text-white hover:bg-neutral-900 border-2 border-amber-400 hover:border-amber-300 px-5 sm:px-14 py-3.5 sm:py-5 text-[11px] sm:text-sm md:text-base font-bold tracking-[0.12em] sm:tracking-[0.25em] uppercase whitespace-nowrap rounded-none shadow-[0_12px_35px_rgba(0,0,0,0.85),0_0_25px_rgba(251,191,36,0.35)] hover:shadow-[0_15px_45px_rgba(0,0,0,0.95),0_0_35px_rgba(251,191,36,0.6)] transition-all duration-300 transform hover:-translate-y-1 active:translate-y-0 cursor-pointer"
             aria-label="Iniciar agendamento online"
           >
             <span className="w-2.5 h-2.5 rounded-full bg-amber-400 group-hover:scale-125 transition-transform animate-pulse" />
