@@ -130,13 +130,20 @@ export const BookingDrawer: React.FC<BookingDrawerProps> = ({
 
   const handleSelectService = (service: Service) => {
     setSelectedService(service);
-    // If date and time were already chosen from mini agenda, proceed directly to Seus Dados!
-    if (selectedDay && selectedTime) {
-      setStep(3);
-    } else {
-      setStep(2);
-    }
+    setFormError(null);
   };
+
+  const handleContinueFromService = () => {
+    if (!selectedService) {
+      setFormError('Escolha um serviço para continuar.');
+      return;
+    }
+    setFormError(null);
+    // Se data e horário já vieram da mini agenda, vai direto para "Seus Dados"
+    setStep(selectedDay && selectedTime ? 3 : 2);
+  };
+
+  const formatDateBR = (dateStr: string) => dateStr.split('-').reverse().join('/');
 
   const handleSelectDay = (day: DayOption) => {
     if (day.isOffDay) return;
@@ -279,7 +286,7 @@ export const BookingDrawer: React.FC<BookingDrawerProps> = ({
 
       {/* Drawer Container - Spacious, intuitive, luxurious */}
       <aside
-        className="relative w-full max-w-2xl bg-[#121215] text-white h-full shadow-[0_0_60px_rgba(0,0,0,0.9)] flex flex-col z-10 border-l border-neutral-800 animate-in slide-in-from-right duration-300"
+        className="relative w-full max-w-2xl bg-[#121215] text-white h-[100dvh] shadow-[0_0_60px_rgba(0,0,0,0.9)] flex flex-col z-10 border-l border-neutral-800 animate-in slide-in-from-right duration-300"
         role="dialog"
         aria-modal="true"
         aria-label="Painel de Agendamento PURAZI"
@@ -306,39 +313,39 @@ export const BookingDrawer: React.FC<BookingDrawerProps> = ({
           </button>
         </div>
 
-        {/* Step Indicator - High contrast, intuitive, clear */}
-        <div className="px-5 sm:px-6 py-3.5 bg-[#0e0e11] border-b border-neutral-800 flex items-center justify-between text-xs">
-          <div className="flex items-center gap-3 sm:gap-6">
-            <span className={`flex items-center gap-2 ${step === 1 ? 'text-amber-300 font-bold' : step > 1 ? 'text-neutral-300 font-medium' : 'text-neutral-500'}`}>
-              <span className={`w-6 h-6 rounded-full flex items-center justify-center text-xs ${step === 1 ? 'bg-amber-400 text-black font-extrabold shadow-[0_0_10px_rgba(251,191,36,0.5)]' : step > 1 ? 'bg-neutral-800 text-neutral-200 border border-neutral-700' : 'bg-neutral-900 text-neutral-600'}`}>
-                1
-              </span>
-              <span>Serviço</span>
-            </span>
-
-            <ChevronRight className="w-4 h-4 text-neutral-700 shrink-0" />
-
-            <span className={`flex items-center gap-2 ${step === 2 ? 'text-amber-300 font-bold' : step > 2 ? 'text-neutral-300 font-medium' : 'text-neutral-500'}`}>
-              <span className={`w-6 h-6 rounded-full flex items-center justify-center text-xs ${step === 2 ? 'bg-amber-400 text-black font-extrabold shadow-[0_0_10px_rgba(251,191,36,0.5)]' : step > 2 ? 'bg-neutral-800 text-neutral-200 border border-neutral-700' : 'bg-neutral-900 text-neutral-600'}`}>
-                2
-              </span>
-              <span>Data &amp; Hora</span>
-            </span>
-
-            <ChevronRight className="w-4 h-4 text-neutral-700 shrink-0" />
-
-            <span className={`flex items-center gap-2 ${step >= 3 ? 'text-amber-300 font-bold' : 'text-neutral-500'}`}>
-              <span className={`w-6 h-6 rounded-full flex items-center justify-center text-xs ${step >= 3 ? 'bg-amber-400 text-black font-extrabold shadow-[0_0_10px_rgba(251,191,36,0.5)]' : 'bg-neutral-900 text-neutral-600'}`}>
-                3
-              </span>
-              <span>Seus Dados</span>
-            </span>
-          </div>
-
-          <span className="text-[11px] text-neutral-400 font-mono hidden sm:inline">
-            Etapa {step} de 3
-          </span>
-        </div>
+        {/* Indicador de etapas (único) */}
+        <ol className="px-5 sm:px-6 py-3 bg-[#0e0e11] border-b border-neutral-800 flex items-center gap-2 sm:gap-3 text-xs" aria-label="Etapas do agendamento">
+          {[
+            { n: 1, label: 'Serviço' },
+            { n: 2, label: 'Data & Hora' },
+            { n: 3, label: 'Seus Dados' },
+          ].map((item, idx) => {
+            const done = step > item.n;
+            const active = step === item.n;
+            return (
+              <React.Fragment key={item.n}>
+                {idx > 0 && <span className={`h-px flex-1 max-w-10 ${step >= item.n ? 'bg-amber-400/60' : 'bg-neutral-800'}`} aria-hidden="true" />}
+                <li
+                  className={`flex items-center gap-2 ${active ? 'text-amber-300 font-bold' : done ? 'text-neutral-300' : 'text-neutral-600'}`}
+                  aria-current={active ? 'step' : undefined}
+                >
+                  <span
+                    className={`w-6 h-6 rounded-full flex items-center justify-center text-[11px] font-bold shrink-0 ${
+                      active
+                        ? 'bg-amber-400 text-black'
+                        : done
+                        ? 'bg-amber-400/15 text-amber-300 border border-amber-400/40'
+                        : 'bg-neutral-900 text-neutral-600 border border-neutral-800'
+                    }`}
+                  >
+                    {done ? <Check className="w-3.5 h-3.5" /> : item.n}
+                  </span>
+                  <span className={active ? 'inline' : 'hidden sm:inline'}>{item.label}</span>
+                </li>
+              </React.Fragment>
+            );
+          })}
+        </ol>
 
         {/* Scrollable Content */}
         <div className="flex-1 overflow-y-auto p-5 sm:p-7 space-y-6">
@@ -353,9 +360,6 @@ export const BookingDrawer: React.FC<BookingDrawerProps> = ({
           {step === 1 && (
             <div className="space-y-5 animate-in fade-in duration-200">
               <div className="border-b border-neutral-800/80 pb-4">
-                <span className="text-[10px] uppercase tracking-[0.25em] text-amber-400 font-mono font-bold block mb-1">
-                  Passo 1 de 3
-                </span>
                 <h3 className="text-xl sm:text-2xl font-bold text-white tracking-tight">
                   Escolha o Serviço
                 </h3>
@@ -380,10 +384,12 @@ export const BookingDrawer: React.FC<BookingDrawerProps> = ({
                 {services.map((service) => {
                   const isSelected = selectedService?.id === service.id;
                   return (
-                    <div
+                    <button
+                      type="button"
                       key={service.id}
                       onClick={() => handleSelectService(service)}
-                      className={`p-4 sm:p-5 border transition-all duration-200 cursor-pointer flex items-center justify-between gap-4 ${
+                      aria-pressed={isSelected}
+                      className={`w-full text-left p-4 sm:p-5 border transition-all duration-200 cursor-pointer flex items-center justify-between gap-4 ${
                         isSelected
                           ? 'border-amber-400 bg-[#1a1a20] shadow-[0_0_20px_rgba(251,191,36,0.15)] ring-1 ring-amber-400'
                           : 'border-neutral-800 bg-[#161619] hover:border-neutral-600 hover:bg-[#1a1a1e]'
@@ -418,38 +424,34 @@ export const BookingDrawer: React.FC<BookingDrawerProps> = ({
                         <span className={`text-[11px] font-semibold uppercase tracking-wider mt-1 px-2.5 py-1 transition-colors ${
                           isSelected
                             ? 'bg-amber-400 text-black'
-                            : 'bg-neutral-800 text-neutral-300 group-hover:bg-neutral-700'
+                            : 'bg-neutral-800 text-neutral-300'
                         }`}>
                           {isSelected ? 'Escolhido ✓' : 'Selecionar'}
                         </span>
                       </div>
-                    </div>
+                    </button>
                   );
                 })}
               </div>
-
-              {selectedService && (
-                <div className="pt-2">
-                  <button
-                    type="button"
-                    onClick={() => setStep(2)}
-                    className="w-full bg-white text-black hover:bg-amber-400 hover:text-black py-3.5 font-bold uppercase tracking-[0.2em] text-xs transition-colors rounded-none shadow-lg cursor-pointer flex items-center justify-center gap-2"
-                  >
-                    <span>Continuar com {selectedService.name}</span>
-                    <ChevronRight className="w-4 h-4" />
-                  </button>
-                </div>
-              )}
             </div>
           )}
 
           {/* STEP 2: Data e Horário (Faixa horizontal com os próximos 90 dias e botões de horário embaixo) */}
           {step === 2 && (
             <div className="space-y-6 animate-in fade-in duration-200">
+              <div className="border-b border-neutral-800/80 pb-4">
+                <h3 className="text-xl sm:text-2xl font-bold text-white tracking-tight">
+                  Escolha Data e Horário
+                </h3>
+                <p className="text-xs sm:text-sm text-neutral-400 mt-1 font-sans">
+                  Toque em um dia e depois no horário que preferir.
+                </p>
+              </div>
+
               {/* Selected service summary tag */}
               {selectedService && (
-                <div className="bg-[#18181c] border border-neutral-800 p-3.5 flex items-center justify-between text-xs">
-                  <div className="flex items-center gap-2">
+                <div className="bg-[#18181c] border border-neutral-800 p-3.5 flex items-center justify-between gap-3 text-xs">
+                  <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 min-w-0">
                     <span className="text-neutral-400 font-mono">Serviço:</span>
                     <strong className="text-white text-sm">{selectedService.name}</strong>
                     <span className="text-amber-300 font-mono font-bold">R$ {selectedService.price.toFixed(2).replace('.', ',')}</span>
@@ -458,7 +460,7 @@ export const BookingDrawer: React.FC<BookingDrawerProps> = ({
                   <button
                     type="button"
                     onClick={() => setStep(1)}
-                    className="text-amber-400 hover:text-amber-300 text-[11px] uppercase tracking-wider font-semibold underline underline-offset-2 cursor-pointer"
+                    className="text-amber-400 hover:text-amber-300 text-[11px] uppercase tracking-wider font-semibold underline underline-offset-2 cursor-pointer shrink-0 whitespace-nowrap"
                   >
                     Alterar serviço
                   </button>
@@ -470,7 +472,7 @@ export const BookingDrawer: React.FC<BookingDrawerProps> = ({
                 <div className="flex items-center justify-between">
                   <span className="text-xs uppercase tracking-[0.2em] text-white font-bold flex items-center gap-2">
                     <Calendar className="w-4 h-4 text-amber-400" />
-                    <span>1. Escolha o Dia (Próximos 90 dias)</span>
+                    <span>Dia</span>
                   </span>
 
                   <div className="flex items-center gap-1.5">
@@ -495,7 +497,7 @@ export const BookingDrawer: React.FC<BookingDrawerProps> = ({
 
                 <div
                   ref={daysScrollRef}
-                  className="flex gap-2.5 overflow-x-auto pb-2 scrollbar-none snap-x"
+                  className="flex gap-2.5 overflow-x-auto p-1 pb-2 scrollbar-none snap-x"
                   style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
                 >
                   {days.map((day) => {
@@ -539,7 +541,7 @@ export const BookingDrawer: React.FC<BookingDrawerProps> = ({
                 <div className="flex items-center justify-between">
                   <span className="text-xs uppercase tracking-[0.2em] text-white font-bold flex items-center gap-2">
                     <Clock className="w-4 h-4 text-amber-400" />
-                    <span>2. Escolha o Horário</span>
+                    <span>Horário</span>
                   </span>
                   {selectedDay && (
                     <span className="text-xs text-amber-300 font-medium">
@@ -590,7 +592,7 @@ export const BookingDrawer: React.FC<BookingDrawerProps> = ({
                   </div>
                 )}
 
-                <div className="flex items-center gap-4 pt-1 text-[11px] text-neutral-500 font-sans">
+                <div className="flex flex-wrap items-center gap-x-4 gap-y-1 pt-1 text-[11px] text-neutral-500 font-sans">
                   <span className="flex items-center gap-1.5">
                     <span className="w-2.5 h-2.5 border border-neutral-700 bg-[#18181c] inline-block" />
                     Disponível
@@ -599,7 +601,7 @@ export const BookingDrawer: React.FC<BookingDrawerProps> = ({
                     <span className="w-2.5 h-2.5 border border-neutral-900 bg-neutral-950 line-through inline-block text-[8px] text-center text-neutral-600">
                       -
                     </span>
-                    Ocupado / Riscado
+                    Indisponível
                   </span>
                   <span className="flex items-center gap-1.5">
                     <span className="w-2.5 h-2.5 bg-amber-400 inline-block" />
@@ -607,40 +609,13 @@ export const BookingDrawer: React.FC<BookingDrawerProps> = ({
                   </span>
                 </div>
               </div>
-
-              {/* Action Buttons */}
-              <div className="pt-4 flex items-center justify-between border-t border-neutral-800">
-                <button
-                  type="button"
-                  onClick={() => setStep(1)}
-                  className="text-neutral-400 hover:text-white text-xs uppercase tracking-wider font-semibold cursor-pointer"
-                >
-                  &larr; Voltar aos Serviços
-                </button>
-
-                <button
-                  type="button"
-                  onClick={handleProceedToDetails}
-                  disabled={!selectedTime}
-                  className={`px-7 py-3.5 text-xs uppercase tracking-[0.2em] font-bold transition-all rounded-none ${
-                    selectedTime
-                      ? 'bg-white text-black hover:bg-amber-400 hover:text-black cursor-pointer shadow-lg'
-                      : 'bg-neutral-800 text-neutral-500 cursor-not-allowed'
-                  }`}
-                >
-                  {selectedTime ? `Avançar com ${selectedTime} →` : 'Selecione um horário'}
-                </button>
-              </div>
             </div>
           )}
 
           {/* STEP 3: Seus Dados (Só nome e WhatsApp, sem cadastro nem senha) */}
           {step === 3 && (
-            <form onSubmit={handleConfirmBooking} className="space-y-6 animate-in fade-in duration-200">
+            <form id="booking-form" onSubmit={handleConfirmBooking} className="space-y-6 animate-in fade-in duration-200">
               <div className="border-b border-neutral-800/80 pb-4">
-                <span className="text-[10px] uppercase tracking-[0.25em] text-amber-400 font-mono font-bold block mb-1">
-                  Passo 3 de 3
-                </span>
                 <h3 className="text-xl sm:text-2xl font-bold text-white tracking-tight">
                   Seus Dados para Contato
                 </h3>
@@ -714,24 +689,6 @@ export const BookingDrawer: React.FC<BookingDrawerProps> = ({
                   </p>
                 </div>
               </div>
-
-              {/* Actions */}
-              <div className="pt-4 flex items-center justify-between border-t border-neutral-800">
-                <button
-                  type="button"
-                  onClick={() => setStep(2)}
-                  className="text-neutral-400 hover:text-white text-xs uppercase tracking-wider font-semibold cursor-pointer"
-                >
-                  &larr; Voltar
-                </button>
-
-                <button
-                  type="submit"
-                  className="bg-white text-black hover:bg-amber-400 hover:text-black px-7 sm:px-10 py-3.5 sm:py-4 text-xs sm:text-sm uppercase tracking-[0.2em] font-bold rounded-none transition-all shadow-[0_10px_25px_rgba(0,0,0,0.8)] cursor-pointer"
-                >
-                  Confirmar Agendamento
-                </button>
-              </div>
             </form>
           )}
 
@@ -775,7 +732,7 @@ export const BookingDrawer: React.FC<BookingDrawerProps> = ({
                   </div>
                   <div className="flex justify-between">
                     <span className="text-neutral-400 font-mono">Data:</span>
-                    <span className="text-white font-medium">{confirmedAppointment.dateStr}</span>
+                    <span className="text-white font-medium">{formatDateBR(confirmedAppointment.dateStr)}</span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-neutral-400 font-mono">Horário:</span>
@@ -838,6 +795,65 @@ export const BookingDrawer: React.FC<BookingDrawerProps> = ({
             </div>
           )}
         </div>
+
+        {/* Rodapé fixo: ação principal sempre visível (sem precisar rolar) */}
+        {step !== 4 && (
+          <div className="shrink-0 border-t border-neutral-800 bg-[#161619] px-5 sm:px-7 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom,0px))] flex items-center gap-3">
+            {step > 1 && (
+              <button
+                type="button"
+                onClick={() => setStep((step - 1) as 1 | 2 | 3)}
+                className="h-12 px-4 inline-flex items-center gap-1.5 text-neutral-300 hover:text-white border border-neutral-700 hover:border-neutral-500 text-xs uppercase tracking-wider font-semibold transition-colors cursor-pointer"
+              >
+                <ChevronLeft className="w-4 h-4" />
+                <span>Voltar</span>
+              </button>
+            )}
+
+            {step === 1 && (
+              <button
+                type="button"
+                onClick={handleContinueFromService}
+                disabled={!selectedService}
+                className={`flex-1 h-12 inline-flex items-center justify-center gap-2 text-xs uppercase tracking-[0.15em] font-bold transition-colors ${
+                  selectedService
+                    ? 'bg-white text-black hover:bg-amber-400 cursor-pointer'
+                    : 'bg-neutral-800 text-neutral-500 cursor-not-allowed'
+                }`}
+              >
+                <span className="truncate">{selectedService ? `Continuar com ${selectedService.name}` : 'Selecione um serviço'}</span>
+                {selectedService && <ChevronRight className="w-4 h-4 shrink-0" />}
+              </button>
+            )}
+
+            {step === 2 && (
+              <button
+                type="button"
+                onClick={handleProceedToDetails}
+                disabled={!selectedTime}
+                className={`flex-1 h-12 inline-flex items-center justify-center gap-2 text-xs uppercase tracking-[0.15em] font-bold transition-colors ${
+                  selectedTime
+                    ? 'bg-white text-black hover:bg-amber-400 cursor-pointer'
+                    : 'bg-neutral-800 text-neutral-500 cursor-not-allowed'
+                }`}
+              >
+                <span className="truncate">{selectedTime ? `Continuar às ${selectedTime}` : 'Selecione um horário'}</span>
+                {selectedTime && <ChevronRight className="w-4 h-4 shrink-0" />}
+              </button>
+            )}
+
+            {step === 3 && (
+              <button
+                type="submit"
+                form="booking-form"
+                className="flex-1 h-12 inline-flex items-center justify-center gap-2 bg-amber-400 text-black hover:bg-amber-300 text-xs uppercase tracking-[0.15em] font-bold transition-colors cursor-pointer"
+              >
+                <Check className="w-4 h-4" />
+                <span>Confirmar Agendamento</span>
+              </button>
+            )}
+          </div>
+        )}
       </aside>
     </div>
   );
