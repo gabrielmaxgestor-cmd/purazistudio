@@ -19,14 +19,15 @@ export const Navbar: React.FC<NavbarProps> = ({
 
   useEffect(() => {
     const handleScroll = () => {
-      setIsScrolled(window.scrollY > 35);
+      setIsScrolled(window.scrollY > 30);
     };
 
+    handleScroll();
     window.addEventListener('scroll', handleScroll, { passive: true });
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
-  // Prevent background scrolling when mobile menu is open
+  // Previne rolagem de fundo quando menu mobile em tela cheia estiver aberto
   useEffect(() => {
     if (mobileMenuOpen) {
       document.body.style.overflow = 'hidden';
@@ -53,61 +54,119 @@ export const Navbar: React.FC<NavbarProps> = ({
   return (
     <>
       <header
-        className={`fixed top-0 left-0 right-0 z-40 bg-[#141416]/95 backdrop-blur-md border-b border-white/10 transition-shadow duration-300 pt-[env(safe-area-inset-top,0px)] ${
-          isScrolled ? 'shadow-2xl' : 'shadow-none'
+        className={`fixed top-0 left-0 right-0 z-40 transition-all duration-300 pt-[env(safe-area-inset-top,0px)] ${
+          isScrolled
+            ? 'bg-[#161618]/90 backdrop-blur-md border-b border-white/10 shadow-lg py-2.5 sm:py-3.5'
+            : 'bg-transparent border-b border-transparent py-3.5 sm:py-5'
         }`}
       >
-        <div className="max-w-[1366px] mx-auto h-16 sm:h-20 px-4 sm:px-10 grid grid-cols-[auto_1fr_auto] md:grid-cols-[1fr_auto_1fr] items-center gap-3">
-          {/* Logo à esquerda */}
+        <div className="max-w-[1366px] mx-auto px-4 sm:px-10 grid grid-cols-[auto_1fr_auto] md:grid-cols-[1fr_auto_1fr] items-center gap-3">
+          {/* Logo à esquerda com o arquivo de logotipo oficial do anexo */}
           <a
             href="#top"
-            className="flex items-center justify-self-start cursor-pointer"
+            className="flex items-center justify-self-start cursor-pointer transition-opacity hover:opacity-85"
             aria-label="PURAZI Studio Início"
           >
             <img
-              src="/assets/logo-purazi-white.png"
+              src="/assets/aistudio/Logotipo_minimalista_PURAZI_studio_586fcc6b.png"
               alt="PURΛZI Studio"
-              className="h-7 sm:h-10 w-auto object-contain"
+              className={`h-7 sm:h-9 w-auto object-contain transition-all duration-300 ${
+                isScrolled ? 'brightness-0 invert' : ''
+              }`}
             />
           </a>
 
-          {/* Links centralizados de verdade (coluna central do grid) */}
+          {/* Links centralizados em letras pequenas e espaçadas: Serviços · Localização · Consultar agendamento */}
           <nav className="hidden md:flex items-center justify-center gap-6 lg:gap-8">
             <button
               onClick={onOpenServices}
-              className="text-xs uppercase tracking-[0.2em] font-medium text-neutral-300 hover:text-white transition-colors cursor-pointer whitespace-nowrap"
+              style={{
+                fontSize: '9px',
+                lineHeight: '16px',
+                height: '16px',
+                marginLeft: '96px',
+                marginTop: '0px',
+                marginRight: '-45px',
+              }}
+              className={`uppercase tracking-[0.22em] font-medium transition-colors cursor-pointer whitespace-nowrap ${
+                isScrolled
+                  ? 'text-neutral-300 hover:text-white'
+                  : 'text-neutral-900 hover:text-black font-semibold'
+              }`}
             >
               Serviços
             </button>
-            <span className="text-xs select-none text-neutral-600" aria-hidden="true">·</span>
+            <span
+              className={`text-xs select-none ${
+                isScrolled ? 'text-neutral-600' : 'text-neutral-500'
+              }`}
+              aria-hidden="true"
+            >
+              ·
+            </span>
             <button
               onClick={scrollToLocation}
-              className="text-xs uppercase tracking-[0.2em] font-medium text-neutral-300 hover:text-white transition-colors cursor-pointer whitespace-nowrap"
+              style={{
+                fontSize: '9px',
+                marginTop: '0px',
+                marginLeft: '9px',
+                marginRight: '-33px',
+              }}
+              className={`uppercase tracking-[0.22em] font-medium transition-colors cursor-pointer whitespace-nowrap ${
+                isScrolled
+                  ? 'text-neutral-300 hover:text-white'
+                  : 'text-neutral-900 hover:text-black font-semibold'
+              }`}
             >
               Localização
             </button>
-            <span className="text-xs select-none text-neutral-600" aria-hidden="true">·</span>
+            <span
+              className={`text-xs select-none ${
+                isScrolled ? 'text-neutral-600' : 'text-neutral-500'
+              }`}
+              aria-hidden="true"
+            >
+              ·
+            </span>
             <button
               onClick={onOpenConsult}
-              className="text-xs uppercase tracking-[0.2em] font-medium text-neutral-300 hover:text-white transition-colors cursor-pointer whitespace-nowrap"
+              style={{
+                lineHeight: '14px',
+                fontSize: '9px',
+                textDecorationLine: 'none',
+                textAlign: 'justify',
+                marginRight: '-8px',
+                marginLeft: '-3px',
+              }}
+              className={`uppercase tracking-[0.22em] font-medium transition-colors cursor-pointer whitespace-nowrap ${
+                isScrolled
+                  ? 'text-neutral-300 hover:text-white'
+                  : 'text-neutral-900 hover:text-black font-semibold'
+              }`}
             >
               Consultar agendamento
             </button>
           </nav>
 
-          {/* Ações à direita: Agendar + menu mobile */}
+          {/* Ações à direita: botão Agendar (preto com texto branco, cantos retos), sempre visível + menu hamburger no mobile */}
           <div className="col-start-3 flex items-center justify-self-end gap-2 sm:gap-3">
             <button
               onClick={onOpenBooking}
-              className="inline-flex items-center justify-center gap-2 h-10 sm:h-11 bg-black text-white hover:bg-amber-400 hover:text-black text-[11px] sm:text-xs tracking-[0.2em] uppercase font-bold px-4 sm:px-7 border-2 border-amber-400/90 hover:border-amber-400 transition-colors duration-300 cursor-pointer group"
+              className={`inline-flex items-center justify-center h-9 sm:h-10 bg-black text-white text-[11px] sm:text-xs tracking-[0.2em] uppercase font-bold px-4 sm:px-6 rounded-none cursor-pointer transition-colors duration-200 ${
+                isScrolled
+                  ? 'border border-white/20 hover:bg-white hover:text-black'
+                  : 'border border-black hover:bg-neutral-800'
+              }`}
             >
-              <span className="w-1.5 h-1.5 rounded-full bg-amber-400 group-hover:bg-black transition-colors animate-pulse" />
-              <span>Agendar</span>
+              Agendar
             </button>
 
+            {/* Menu Hamburger no celular */}
             <button
               onClick={() => setMobileMenuOpen(true)}
-              className="md:hidden h-10 w-10 inline-flex items-center justify-center text-white hover:text-neutral-300 transition-colors focus:outline-none cursor-pointer"
+              className={`md:hidden h-9 w-9 inline-flex items-center justify-center transition-colors focus:outline-none cursor-pointer ${
+                isScrolled ? 'text-white hover:text-neutral-300' : 'text-neutral-900 hover:text-black'
+              }`}
               aria-label="Abrir menu de navegação"
             >
               <Menu className="w-6 h-6" />
@@ -116,20 +175,20 @@ export const Navbar: React.FC<NavbarProps> = ({
         </div>
       </header>
 
-      {/* Mobile Menu Fullscreen (grafite, com os links grandes em serifada) */}
+      {/* Menu no celular que abre em tela cheia, grafite, com os links grandes em serifada */}
       {mobileMenuOpen && (
         <div
-          className="fixed inset-0 z-50 bg-[#161618] flex flex-col justify-between px-6 sm:px-8 py-8 animate-in fade-in duration-200"
+          className="fixed inset-0 z-50 bg-[#161618] text-white flex flex-col justify-between px-6 sm:px-10 py-7 animate-in fade-in duration-200"
           role="dialog"
           aria-modal="true"
           aria-label="Menu principal"
         >
-          {/* Top Bar with Logo and Close */}
+          {/* Topo do menu com a Logo e botão fechar */}
           <div className="flex items-center justify-between border-b border-neutral-800 pb-5">
             <img
-              src="/assets/logo-purazi-white.png"
+              src="/assets/aistudio/Logotipo_minimalista_PURAZI_studio_586fcc6b.png"
               alt="PURΛZI Studio"
-              className="h-6 w-auto object-contain"
+              className="h-6 w-auto object-contain brightness-0 invert"
             />
             <button
               onClick={() => setMobileMenuOpen(false)}
@@ -140,7 +199,7 @@ export const Navbar: React.FC<NavbarProps> = ({
             </button>
           </div>
 
-          {/* Large Serif Links */}
+          {/* Links grandes em serifada */}
           <nav className="flex flex-col gap-6 my-auto font-['Cormorant_Garamond',serif] text-3xl sm:text-4xl text-neutral-200">
             <button
               onClick={() => {
@@ -198,14 +257,14 @@ export const Navbar: React.FC<NavbarProps> = ({
             </button>
           </nav>
 
-          {/* Bottom Action in Mobile Menu */}
+          {/* Botão de ação e rodapé do menu mobile */}
           <div className="pt-6 border-t border-neutral-800 flex flex-col gap-3">
             <button
               onClick={() => {
                 setMobileMenuOpen(false);
                 onOpenBooking();
               }}
-              className="w-full bg-white text-black hover:bg-neutral-200 py-3.5 font-sans uppercase tracking-[0.25em] text-xs font-bold rounded-none transition-colors cursor-pointer"
+              className="w-full bg-black text-white hover:bg-neutral-900 border border-white/20 py-3.5 font-sans uppercase tracking-[0.25em] text-xs font-bold rounded-none transition-colors cursor-pointer"
             >
               Agendar Agora
             </button>

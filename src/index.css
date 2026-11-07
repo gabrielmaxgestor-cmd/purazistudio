@@ -16,15 +16,6 @@ body {
   padding-bottom: env(safe-area-inset-bottom, 0px);
 }
 
-/* Reserva o espaço da navbar fixa (h-16 no mobile / h-20 no desktop + safe-area) */
-.nav-spacer {
-  height: calc(4rem + env(safe-area-inset-top, 0px));
-}
-@media (min-width: 640px) {
-  .nav-spacer {
-    height: calc(5rem + env(safe-area-inset-top, 0px));
-  }
-}
 
 .page {
   position: relative;

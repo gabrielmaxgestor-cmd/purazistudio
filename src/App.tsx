@@ -8,7 +8,7 @@ import { MiniBookingAgenda } from './components/MiniBookingAgenda';
 import { HaircutCarouselSection } from './components/HaircutCarouselSection';
 import { Service, DayOption } from './utils/bookingLogic';
 import { getStoredServices } from './utils/storage';
-import { Calendar, Search, ShieldCheck, Scissors, ArrowRight } from 'lucide-react';
+import { ArrowRight } from 'lucide-react';
 
 export default function App() {
   const [bookingOpen, setBookingOpen] = useState(false);
@@ -62,408 +62,263 @@ export default function App() {
         onOpenAdmin={() => setAdminOpen(true)}
       />
 
-      {/* Espaçador: impede que a navbar fixa cubra o topo do hero */}
-      <div className="nav-spacer" aria-hidden="true" />
-
       {/* ========================================================================= */}
       {/* ESTRUTURA ORIGINAL FIEL AO DESIGN ANEXADO PELO USUÁRIO                    */}
       {/* Imagem original com 100% de nitidez, sem manchas ou blocos cortados       */}
       {/* Caixas de textos interativas identificadas e posicionadas com precisão    */}
       {/* ========================================================================= */}
-      <main className="page relative max-w-[1366px] mx-auto leading-none bg-[#0f0f0f]">
+      {/* ========================================================================= */}
+      {/* ESTRUTURA CONTÍNUA E FIEL AO DESIGN ORIGINAL                              */}
+      {/* 1. Dobras 1 a 3: Hero + Agendamento Online + Clipper + Localização        */}
+      {/* 2. Dobra 4: Dúvidas / WhatsApp com carrossel dinâmico                     */}
+      {/* 3. Dobra 5: Rodapé institucional limpo com texto direto no fundo escuro   */}
+      {/* ========================================================================= */}
+      <main className="w-full bg-[#0f0f0f]">
         <h1 className="sr">PURAZI Studio — Aqui, cada detalhe valoriza sua melhor versão. Barbearia em Valença/RJ</h1>
 
-        {/* Imagem base com o design original anexado pelo usuário */}
-        <img
-          src="/assets/purazi-landing.webp"
-          alt="PURAZI Studio — Barbearia &amp; Visagismo em Valença/RJ"
-          width={1366}
-          height={3520}
-          loading="eager"
-          className="bg-canvas"
-        />
+        {/* ------------------------------------------------------------------------- */}
+        {/* PARTE 1: CANVAS SUPERIOR (Hero, Agendamento, Máquina de corte e Mapa)     */}
+        {/* ------------------------------------------------------------------------- */}
+        <div className="page relative max-w-[1366px] mx-auto leading-none bg-[#0f0f0f]">
+          <img
+            src="/assets/purazi-top.webp"
+            alt="PURAZI Studio — Barbearia &amp; Visagismo em Valença/RJ"
+            width={1366}
+            height={2254}
+            loading="eager"
+            className="w-full h-auto block bg-canvas"
+          />
 
-        {/* ========================================================================= */}
-        {/* 1. HERO: Título e Logotipo Oficial                                        */}
-        {/* ========================================================================= */}
-        {/* Caixa de identificação do Título Principal */}
-        <div
-          className="h pointer-events-auto rounded transition-colors group"
-          style={{
-            left: '49.78%',
-            top: '4.26%',
-            width: '42.00%',
-            height: '6.50%',
-          }}
-          title="PURAZI Studio: Aqui, cada detalhe valoriza sua melhor versão."
-        >
-          <span className="sr">Aqui, cada detalhe valoriza sua melhor versão.</span>
-        </div>
-
-        {/* Caixa de clique do Logotipo Oficial PURAZI Studio no Hero */}
-        <a
-          href="#top"
-          onClick={scrollToTop}
-          className="h rounded transition-all duration-200 hover:ring-1 hover:ring-neutral-400/30"
-          style={{
-            left: '76.13%',
-            top: '12.35%',
-            width: '16.10%',
-            height: '2.40%',
-          }}
-          title="PURAZI Studio — Voltar ao topo"
-          aria-label="PURAZI Studio — Voltar ao topo"
-        >
-          <span className="sr">PURAZI Studio</span>
-        </a>
-
-        {/* ========================================================================= */}
-        {/* 2. DOBRA 2: 'Agende seu horário abaixo:' + Subtítulo + Botão Único         */}
-        {/* Conforme solicitação: apenas um botão destacado e único com a CTA           */}
-        {/* 'Iniciar agendamento online', alinhado ao texto                             */}
-        {/* ========================================================================= */}
-        {/* Caixa de identificação do título: 'Agende seu horário abaixo:' */}
-        <div
-          className="h rounded select-text"
-          style={{
-            left: '20.00%',
-            top: '21.50%',
-            width: '60.00%',
-            height: '2.50%',
-          }}
-          title="Agende seu horário abaixo"
-        >
-          <span className="sr">Agende seu horário abaixo:</span>
-        </div>
-
-        {/* Caixa de identificação do subtítulo: 'Rápido, prático e sem intermediários...' */}
-        <div
-          className="h rounded select-text"
-          style={{
-            left: '20.00%',
-            top: '24.00%',
-            width: '60.00%',
-            height: '1.40%',
-          }}
-          title="Rápido, prático e sem intermediários. Escolha o serviço, barbeiro e confirme em 1 minuto."
-        >
-          <span className="sr">Rápido, prático e sem intermediários. Escolha o serviço, barbeiro e confirme em 1 minuto.</span>
-        </div>
-
-        {/* Botão Único e Destacado: 'Iniciar agendamento online' - alinhado ao texto */}
-        <div
-          className="absolute left-1/2 -translate-x-1/2 z-20 pointer-events-auto w-full flex justify-center px-4"
-          style={{
-            top: '27.4%',
-          }}
-        >
-          <button
-            type="button"
-            onClick={() => handleOpenBookingWithService()}
-            className="group relative inline-flex items-center justify-center gap-2.5 sm:gap-3.5 bg-black text-white hover:bg-neutral-900 border-2 border-amber-400 hover:border-amber-300 px-5 sm:px-14 py-3.5 sm:py-5 text-[11px] sm:text-sm md:text-base font-bold tracking-[0.12em] sm:tracking-[0.25em] uppercase whitespace-nowrap rounded-none shadow-[0_12px_35px_rgba(0,0,0,0.85),0_0_25px_rgba(251,191,36,0.35)] hover:shadow-[0_15px_45px_rgba(0,0,0,0.95),0_0_35px_rgba(251,191,36,0.6)] transition-all duration-300 transform hover:-translate-y-1 active:translate-y-0 cursor-pointer"
-            aria-label="Iniciar agendamento online"
+          {/* 1. HERO: Título Principal */}
+          <div
+            className="h pointer-events-auto rounded transition-colors group"
+            style={{
+              left: '49.78%',
+              top: '6.65%',
+              width: '42.00%',
+              height: '10.15%',
+            }}
+            title="PURAZI Studio: Aqui, cada detalhe valoriza sua melhor versão."
           >
-            <span className="w-2.5 h-2.5 rounded-full bg-amber-400 group-hover:scale-125 transition-transform animate-pulse" />
-            <span>Iniciar agendamento online</span>
-            <ArrowRight className="w-4 h-4 sm:w-5 sm:h-5 text-amber-400 transition-transform group-hover:translate-x-1" />
-          </button>
+            <span className="sr">Aqui, cada detalhe valoriza sua melhor versão.</span>
+          </div>
+
+          {/* Logotipo Oficial PURAZI Studio no Hero */}
+          <a
+            href="#top"
+            onClick={scrollToTop}
+            className="h rounded transition-all duration-200 hover:ring-1 hover:ring-neutral-400/30"
+            style={{
+              left: '76.13%',
+              top: '19.28%',
+              width: '16.10%',
+              height: '3.75%',
+            }}
+            title="PURAZI Studio — Voltar ao topo"
+            aria-label="PURAZI Studio — Voltar ao topo"
+          >
+            <span className="sr">PURAZI Studio</span>
+          </a>
+
+          {/* 2. DOBRA 2: 'Agende seu horário abaixo:' + Subtítulo */}
+          <div
+            className="h rounded select-text"
+            style={{
+              left: '20.00%',
+              top: '33.58%',
+              width: '60.00%',
+              height: '3.90%',
+            }}
+            title="Agende seu horário abaixo"
+          >
+            <span className="sr">Agende seu horário abaixo:</span>
+          </div>
+
+          <div
+            className="h rounded select-text"
+            style={{
+              left: '20.00%',
+              top: '37.48%',
+              width: '60.00%',
+              height: '2.19%',
+            }}
+            title="Rápido, prático e sem intermediários. Escolha o serviço, barbeiro e confirme em 1 minuto."
+          >
+            <span className="sr">Rápido, prático e sem intermediários. Escolha o serviço, barbeiro e confirme em 1 minuto.</span>
+          </div>
+
+          {/* Botão Único e Destacado: 'Iniciar agendamento online' - alinhado ao texto com os estilos solicitados */}
+          <div
+            className="absolute left-1/2 -translate-x-1/2 z-20 pointer-events-auto w-full flex justify-center px-4"
+            style={{
+              top: '42.78%',
+            }}
+          >
+            <button
+              type="button"
+              onClick={() => handleOpenBookingWithService()}
+              style={{
+                marginLeft: '100px',
+                paddingLeft: '25px',
+                paddingRight: '25px',
+                paddingTop: '14px',
+                paddingBottom: '14px',
+                marginTop: '-25px',
+                marginBottom: '0px',
+              }}
+              className="group relative inline-flex items-center justify-center gap-2.5 sm:gap-3.5 bg-black text-white hover:bg-neutral-900 border-2 border-amber-400 hover:border-amber-300 text-[11px] sm:text-sm md:text-base font-bold tracking-[0.12em] sm:tracking-[0.25em] uppercase whitespace-nowrap rounded-none shadow-[0_12px_35px_rgba(0,0,0,0.85),0_0_25px_rgba(251,191,36,0.35)] hover:shadow-[0_15px_45px_rgba(0,0,0,0.95),0_0_35px_rgba(251,191,36,0.6)] transition-all duration-300 transform hover:-translate-y-1 active:translate-y-0 cursor-pointer"
+              aria-label="Iniciar agendamento online"
+            >
+              <span className="w-2.5 h-2.5 rounded-full bg-amber-400 group-hover:scale-125 transition-transform animate-pulse" />
+              <span>Iniciar agendamento online</span>
+              <ArrowRight className="w-4 h-4 sm:w-5 sm:h-5 text-amber-400 transition-transform group-hover:translate-x-1" />
+            </button>
+          </div>
+
+          {/* 3. DOBRA 3: Localização com Pin e Endereço Avenida Nilo Peçanha */}
+          <a
+            id="secao-localizacao"
+            href="https://www.google.com/maps/search/?api=1&query=Avenida+Nilo+Pe%C3%A7anha+1027+Valen%C3%A7a+RJ"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="h rounded cursor-pointer transition-all duration-200 hover:ring-1 hover:ring-red-400/40 hover:bg-white/[0.02] scroll-mt-24 sm:scroll-mt-28"
+            style={{
+              left: '24.30%',
+              top: '81.21%',
+              width: '61.00%',
+              height: '13.34%',
+            }}
+            aria-label="Avenida Nilo Peçanha, 1027 - Valença/RJ. Abrir no Google Maps"
+            title="Abrir localização no Google Maps: Avenida Nilo Peçanha, 1027 - Valença/RJ"
+          >
+            <span className="sr">Avenida Nilo Peçanha, 1027 - Valença/RJ</span>
+          </a>
         </div>
 
-        {/* ========================================================================= */}
-        {/* 3. DOBRA 3: Localização com Pin e Endereço Avenida Nilo Peçanha           */}
-        {/* ========================================================================= */}
-        <a
-          id="secao-localizacao"
-          href="https://www.google.com/maps/search/?api=1&query=Avenida+Nilo+Pe%C3%A7anha+1027+Valen%C3%A7a+RJ"
-          target="_blank"
-          rel="noopener noreferrer"
-          className="h rounded cursor-pointer transition-all duration-200 hover:ring-1 hover:ring-red-400/40 hover:bg-white/[0.02]"
-          style={{
-            left: '24.30%',
-            top: '52.00%',
-            width: '61.00%',
-            height: '8.54%',
-          }}
-          aria-label="Avenida Nilo Peçanha, 1027 - Valença/RJ. Abrir no Google Maps"
-          title="Abrir localização no Google Maps: Avenida Nilo Peçanha, 1027 - Valença/RJ"
-        >
-          <span className="sr">Avenida Nilo Peçanha, 1027 - Valença/RJ</span>
-        </a>
+        {/* ------------------------------------------------------------------------- */}
+        {/* PARTE 2: SEÇÃO WHATSAPP & DÚVIDAS (Fluxo contínuo logo abaixo do mapa)    */}
+        {/* ------------------------------------------------------------------------- */}
+        <HaircutCarouselSection />
 
-        {/* ========================================================================= */}
-        {/* 4. DOBRA 4: Carrossel contínuo de fotos de corte + WhatsApp               */}
-        {/* Posicionado logo abaixo da localização (top 61.2% até 88.8%)              */}
-        {/* Texto visível, aprimorado, sem conflito visual com o restante da página  */}
-        {/* ========================================================================= */}
-        <div
-          className="absolute inset-x-0 z-20 overflow-hidden"
-          style={{
-            top: '61.2%',
-            height: '27.6%',
-          }}
-        >
-          <HaircutCarouselSection />
-        </div>
+        {/* ------------------------------------------------------------------------- */}
+        {/* PARTE 3: RODAPÉ INSTITUCIONAL CONTÍNUO (Texto direto no fundo escuro)     */}
+        {/* Sem caixas de fundo atrás do texto - limpo, legível e responsivo          */}
+        {/* ------------------------------------------------------------------------- */}
+        <footer className="w-full bg-[#0a0a0c] border-t border-neutral-800/60 pt-16 pb-12 px-6 sm:px-10 lg:px-16 text-neutral-300">
+          <div className="max-w-[1366px] mx-auto grid grid-cols-1 md:grid-cols-3 gap-10 lg:gap-14">
+            {/* Coluna 1: Logotipo + Descrição Institucional + Cidade */}
+            <div className="flex flex-col items-start">
+              <a
+                href="#top"
+                onClick={scrollToTop}
+                className="inline-block transition-opacity duration-200 hover:opacity-85 mb-5"
+                title="PURAZI Studio — Voltar ao topo"
+                aria-label="PURAZI Studio"
+              >
+                <img
+                  src="/assets/aistudio/Logotipo_minimalista_PURAZI_studio_586fcc6b.png"
+                  alt="PURAZI Studio"
+                  className="h-8 sm:h-9 w-auto object-contain brightness-0 invert"
+                />
+              </a>
+              <p className="font-sans text-xs sm:text-sm text-neutral-300 leading-relaxed font-normal max-w-sm mb-4">
+                Aqui, cada detalhe valoriza sua melhor versão. Barbearia moderna com agendamento online inteligente, pontualidade e técnicas de visagismo sob medida.
+              </p>
+              <div className="font-sans text-xs sm:text-sm text-white font-medium tracking-wide">
+                Valença <span className="text-neutral-500 font-normal">·</span> Rio de Janeiro
+              </div>
+            </div>
 
-        {/* ========================================================================= */}
-        {/* 5. RODAPÉ INSTITUCIONAL COM IDENTIFICAÇÃO EXATA DE CAIXAS DE TEXTO       */}
-        {/* ========================================================================= */}
+            {/* Coluna 2: Acesso Rápido */}
+            <div className="flex flex-col items-start md:items-center">
+              <div className="w-full md:max-w-xs">
+                <h3 className="font-['Cormorant_Garamond',serif] text-lg sm:text-xl font-bold text-white tracking-wide mb-4">
+                  Acesso Rápido
+                </h3>
+                <nav className="flex flex-col space-y-2.5">
+                  <a
+                    href="#top"
+                    onClick={scrollToTop}
+                    className="text-neutral-300 hover:text-white font-sans text-xs sm:text-sm tracking-wide transition-colors text-left"
+                  >
+                    Início
+                  </a>
+                  <button
+                    type="button"
+                    onClick={() => handleOpenBookingWithService()}
+                    className="text-neutral-300 hover:text-white font-sans text-xs sm:text-sm tracking-wide transition-colors text-left cursor-pointer"
+                  >
+                    Agendar Horário
+                  </button>
+                  <a
+                    href="https://www.google.com/maps/search/?api=1&query=Avenida+Nilo+Pe%C3%A7anha+1027+Valen%C3%A7a+RJ"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-neutral-300 hover:text-white font-sans text-xs sm:text-sm tracking-wide transition-colors text-left"
+                  >
+                    Localização &amp; Estrutura
+                  </a>
+                  <a
+                    href="https://wa.me/5524999999999?text=Ol%C3%A1!%20Vim%20pelo%20site%20do%20PURAZI%20Studio."
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-neutral-300 hover:text-emerald-400 font-sans text-xs sm:text-sm tracking-wide transition-colors text-left"
+                  >
+                    Falar no WhatsApp
+                  </a>
+                  <button
+                    type="button"
+                    onClick={() => setConsultOpen(true)}
+                    className="text-neutral-300 hover:text-white font-sans text-xs sm:text-sm tracking-wide transition-colors text-left cursor-pointer"
+                  >
+                    Consultar Meu Agendamento
+                  </button>
+                </nav>
+              </div>
+            </div>
 
-        {/* Logotipo PURAZI Studio no Rodapé */}
-        <a
-          href="#top"
-          onClick={scrollToTop}
-          className="h rounded transition-all duration-200 hover:ring-1 hover:ring-white/20"
-          style={{
-            left: '9.30%',
-            top: '89.20%',
-            width: '15.00%',
-            height: '2.00%',
-          }}
-          title="PURAZI Studio — Voltar ao início"
-          aria-label="PURAZI Studio"
-        >
-          <span className="sr">PURAZI Studio</span>
-        </a>
+            {/* Coluna 3: Contato e Gestão */}
+            <div className="flex flex-col items-start md:items-end">
+              <div className="w-full md:max-w-xs md:text-right">
+                <h3 className="font-['Cormorant_Garamond',serif] text-lg sm:text-xl font-bold text-white tracking-wide mb-4">
+                  Contato e Gestão
+                </h3>
+                <div className="flex flex-col space-y-3">
+                  <a
+                    href="https://www.google.com/maps/search/?api=1&query=Avenida+Nilo+Pe%C3%A7anha+1027+Valen%C3%A7a+RJ"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-neutral-300 hover:text-white font-sans text-xs sm:text-sm tracking-wide leading-relaxed transition-colors"
+                  >
+                    Av. Nilo Peçanha, 1027 · Valença/RJ
+                  </a>
+                  <a
+                    href="tel:+5524999999999"
+                    className="text-white hover:text-amber-300 font-mono text-sm sm:text-base font-semibold tracking-wider transition-colors inline-block"
+                  >
+                    (24) 99999-9999
+                  </a>
+                  <div>
+                    <button
+                      type="button"
+                      onClick={() => setAdminOpen(true)}
+                      className="text-neutral-400 hover:text-amber-400 font-sans text-xs sm:text-sm tracking-wide transition-colors cursor-pointer text-left md:text-right"
+                    >
+                      Painel Administrativo do Barbeiro
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
 
-        {/* Coluna 1: Descrição Institucional */}
-        <div
-          className="h rounded select-text"
-          style={{
-            left: '9.30%',
-            top: '91.55%',
-            width: '27.50%',
-            height: '2.60%',
-          }}
-          title="Aqui, cada detalhe valoriza sua melhor versão."
-        >
-          <span className="sr">
-            Aqui, cada detalhe valoriza sua melhor versão. Barbearia moderna com agendamento online inteligente, pontualidade e técnicas de visagismo sob medida.
-          </span>
-        </div>
-
-        {/* Coluna 1: Cidade (Valença . Rio de Janeiro) */}
-        <div
-          className="h rounded select-text"
-          style={{
-            left: '9.30%',
-            top: '94.60%',
-            width: '20.00%',
-            height: '1.20%',
-          }}
-          title="Valença · Rio de Janeiro"
-        >
-          <span className="sr">Valença · Rio de Janeiro</span>
-        </div>
-
-        {/* Coluna 2: Título 'Acesso Rápido' */}
-        <div
-          className="h rounded select-text"
-          style={{
-            left: '49.00%',
-            top: '89.20%',
-            width: '18.00%',
-            height: '1.20%',
-          }}
-          title="Acesso Rápido"
-        >
-          <span className="sr">Acesso Rápido</span>
-        </div>
-
-        {/* Coluna 2 - Link 1: 'Início' */}
-        <a
-          href="#top"
-          onClick={scrollToTop}
-          className="h rounded cursor-pointer transition-all duration-200 hover:ring-1 hover:ring-white/30 hover:bg-white/[0.04]"
-          style={{
-            left: '49.00%',
-            top: '90.42%',
-            width: '12.00%',
-            height: '1.01%',
-          }}
-          aria-label="Início"
-          title="Voltar ao início"
-        >
-          <span className="sr">Início</span>
-        </a>
-
-        {/* Coluna 2 - Link 2: 'Agendar Horário' */}
-        <button
-          type="button"
-          onClick={() => handleOpenBookingWithService()}
-          className="h rounded cursor-pointer transition-all duration-200 hover:ring-1 hover:ring-amber-300/40 hover:bg-white/[0.04]"
-          style={{
-            left: '49.00%',
-            top: '91.51%',
-            width: '18.00%',
-            height: '1.01%',
-          }}
-          aria-label="Agendar Horário"
-          title="Agendar Horário online"
-        >
-          <span className="sr">Agendar Horário</span>
-        </button>
-
-        {/* Coluna 2 - Link 3: 'Localização & Estrutura' */}
-        <a
-          href="https://www.google.com/maps/search/?api=1&query=Avenida+Nilo+Pe%C3%A7anha+1027+Valen%C3%A7a+RJ"
-          target="_blank"
-          rel="noopener noreferrer"
-          className="h rounded cursor-pointer transition-all duration-200 hover:ring-1 hover:ring-white/30 hover:bg-white/[0.04]"
-          style={{
-            left: '49.00%',
-            top: '92.63%',
-            width: '22.00%',
-            height: '1.01%',
-          }}
-          aria-label="Localização e Estrutura"
-          title="Localização e Estrutura no Google Maps"
-        >
-          <span className="sr">Localização &amp; Estrutura</span>
-        </a>
-
-        {/* Coluna 2 - Link 4: 'Falar no WhatsApp' */}
-        <a
-          href="https://wa.me/5524999999999?text=Ol%C3%A1!%20Vim%20pelo%20site%20do%20PURAZI%20Studio."
-          target="_blank"
-          rel="noopener noreferrer"
-          className="h rounded cursor-pointer transition-all duration-200 hover:ring-1 hover:ring-emerald-400/40 hover:bg-white/[0.04]"
-          style={{
-            left: '49.00%',
-            top: '93.72%',
-            width: '18.00%',
-            height: '1.01%',
-          }}
-          aria-label="Falar no WhatsApp"
-          title="Falar no WhatsApp"
-        >
-          <span className="sr">Falar no WhatsApp</span>
-        </a>
-
-        {/* Coluna 2 - Link 5: 'Consultar Meu Agendamento' */}
-        <button
-          type="button"
-          onClick={() => setConsultOpen(true)}
-          className="h rounded cursor-pointer transition-all duration-200 hover:ring-1 hover:ring-amber-300/40 hover:bg-white/[0.04]"
-          style={{
-            left: '49.00%',
-            top: '94.81%',
-            width: '25.00%',
-            height: '1.01%',
-          }}
-          aria-label="Consultar Meu Agendamento"
-          title="Consultar Meu Agendamento"
-        >
-          <span className="sr">Consultar Meu Agendamento</span>
-        </button>
-
-        {/* Coluna 3: Título 'Contato e Gestão' */}
-        <div
-          className="h rounded select-text"
-          style={{
-            left: '74.10%',
-            top: '89.20%',
-            width: '20.00%',
-            height: '1.20%',
-          }}
-          title="Contato e Gestão"
-        >
-          <span className="sr">Contato e Gestão</span>
-        </div>
-
-        {/* Coluna 3 - Link 1: Endereço Av. Nilo Peçanha, 1027 */}
-        <a
-          href="https://www.google.com/maps/search/?api=1&query=Avenida+Nilo+Pe%C3%A7anha+1027+Valen%C3%A7a+RJ"
-          target="_blank"
-          rel="noopener noreferrer"
-          className="h rounded cursor-pointer transition-all duration-200 hover:ring-1 hover:ring-white/30 hover:bg-white/[0.04]"
-          style={{
-            left: '74.10%',
-            top: '90.50%',
-            width: '24.00%',
-            height: '1.10%',
-          }}
-          title="Ver no Google Maps: Av. Nilo Peçanha, 1027 · Valença/RJ"
-          aria-label="Av. Nilo Peçanha, 1027 · Valença/RJ"
-        >
-          <span className="sr">Av. Nilo Peçanha, 1027 · Valença/RJ</span>
-        </a>
-
-        {/* Coluna 3 - Link 2: Telefone (24) 99999-9999 */}
-        <a
-          href="tel:+5524999999999"
-          className="h rounded cursor-pointer transition-all duration-200 hover:ring-1 hover:ring-amber-300/40 hover:bg-white/[0.04]"
-          style={{
-            left: '74.10%',
-            top: '92.20%',
-            width: '18.00%',
-            height: '1.50%',
-          }}
-          aria-label="Telefone (24) 99999-9999"
-          title="Ligar para (24) 99999-9999"
-        >
-          <span className="sr">(24) 99999-9999</span>
-        </a>
-
-        {/* Coluna 3 - Link 3: 'Painel Administrativo do Barbeiro' */}
-        <button
-          type="button"
-          onClick={() => setAdminOpen(true)}
-          className="h rounded cursor-pointer transition-all duration-200 hover:ring-1 hover:ring-amber-400/50 hover:bg-white/[0.04]"
-          style={{
-            left: '74.10%',
-            top: '93.91%',
-            width: '25.00%',
-            height: '1.01%',
-          }}
-          aria-label="Painel Administrativo do Barbeiro"
-          title="Acessar Painel Administrativo"
-        >
-          <span className="sr">Painel Administrativo do Barbeiro</span>
-        </button>
+          {/* Linha inferior de copyright */}
+          <div className="max-w-[1366px] mx-auto mt-12 pt-6 border-t border-neutral-900 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs font-mono text-neutral-500">
+            <div>© PURAZI STUDIO. TODOS OS DIREITOS RESERVADOS. VALENÇA/RJ</div>
+            <div className="tracking-[0.2em] text-[10px] uppercase text-neutral-600">BARBEARIA &amp; VISAGISMO</div>
+          </div>
+        </footer>
       </main>
-
-      {/* Barra flutuante de ações rápidas, discreta e elegante */}
-      <div className="fixed bottom-4 left-1/2 -translate-x-1/2 z-30 flex items-center gap-1.5 sm:gap-2 bg-[#161619]/90 backdrop-blur-md border border-neutral-700/60 rounded-full p-1.5 px-3 sm:px-4 shadow-2xl transition-transform hover:scale-102">
-        <button
-          type="button"
-          onClick={() => handleOpenBookingWithService()}
-          className="flex items-center gap-1.5 sm:gap-2 text-xs uppercase tracking-wider font-semibold bg-white text-black hover:bg-neutral-200 transition-colors px-3 py-1.5 rounded-full cursor-pointer shadow-md"
-        >
-          <Calendar className="w-3.5 h-3.5 text-neutral-900" />
-          <span>Agendar</span>
-        </button>
-
-        <button
-          type="button"
-          onClick={() => setServicesOpen(true)}
-          className="flex items-center gap-1.5 text-xs text-neutral-300 hover:text-white px-2.5 py-1.5 rounded-full hover:bg-white/10 transition-colors cursor-pointer"
-          title="Ver tabela completa de serviços"
-        >
-          <Scissors className="w-3.5 h-3.5" />
-          <span className="hidden sm:inline">Serviços</span>
-        </button>
-
-        <button
-          type="button"
-          onClick={() => setConsultOpen(true)}
-          className="flex items-center gap-1.5 text-xs text-neutral-300 hover:text-white px-2.5 py-1.5 rounded-full hover:bg-white/10 transition-colors cursor-pointer"
-          title="Consultar agendamento existente"
-        >
-          <Search className="w-3.5 h-3.5" />
-          <span className="hidden sm:inline">Consultar</span>
-        </button>
-
-        <button
-          type="button"
-          onClick={() => setAdminOpen(true)}
-          className="flex items-center gap-1.5 text-xs text-neutral-400 hover:text-amber-400 px-2 py-1.5 rounded-full hover:bg-white/10 transition-colors cursor-pointer"
-          title="Painel Administrativo do Barbeiro"
-        >
-          <ShieldCheck className="w-3.5 h-3.5" />
-          <span className="sr">Painel</span>
-        </button>
-      </div>
 
       {/* Gaveta interativa de Agendamento */}
       <BookingDrawer

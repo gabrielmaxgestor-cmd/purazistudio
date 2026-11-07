@@ -295,9 +295,9 @@ export const BookingDrawer: React.FC<BookingDrawerProps> = ({
         <div className="p-5 sm:p-6 border-b border-neutral-800/80 flex items-center justify-between bg-[#161619]">
           <div className="flex items-center gap-3">
             <img
-              src="/assets/logo-purazi-white.png"
+              src="/assets/aistudio/Logotipo_minimalista_PURAZI_studio_586fcc6b.png"
               alt="PURΛZI Studio"
-              className="h-6 sm:h-7 w-auto object-contain"
+              className="h-6 sm:h-7 w-auto object-contain brightness-0 invert"
             />
             <span className="text-[10px] tracking-widest uppercase bg-amber-400/10 text-amber-300 border border-amber-400/20 px-2 py-0.5 font-mono">
               Agendamento Online

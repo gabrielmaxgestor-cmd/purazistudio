@@ -114,11 +114,11 @@ export const HaircutCarouselSection: React.FC = () => {
   return (
     <section
       id="secao-duvida-whatsapp"
-      className="relative w-full h-full min-h-[520px] overflow-hidden bg-[#0d0d0f] py-12 sm:py-16 flex items-center justify-center"
+      className="relative w-full overflow-hidden bg-[#0d0d0f] py-12 sm:py-16 md:py-20 flex flex-col items-center justify-center"
       aria-label="Galeria de cortes e atendimento WhatsApp"
     >
       {/* Background Animated Dual-Row Photo Carousel - Opacity adjusted for perfect readability */}
-      <div className="absolute inset-0 flex flex-col justify-center gap-4 sm:gap-6 opacity-30 pointer-events-none select-none">
+      <div className="absolute inset-0 flex flex-col justify-center gap-4 sm:gap-6 opacity-40 pointer-events-none select-none">
         {/* Row 1: Left to Right (começa recuado e move suavemente para a direita) */}
         <div className="flex overflow-hidden w-full">
           <div
@@ -186,10 +186,10 @@ export const HaircutCarouselSection: React.FC = () => {
       </div>
 
       {/* Dark gradient vignettes top & bottom to blend seamlessly into canvas */}
-      <div className="absolute inset-x-0 top-0 h-28 bg-gradient-to-b from-[#0f0f0f] to-transparent pointer-events-none z-10" />
-      <div className="absolute inset-x-0 bottom-0 h-28 bg-gradient-to-t from-[#0f0f0f] to-transparent pointer-events-none z-10" />
-      <div className="absolute inset-y-0 left-0 w-28 bg-gradient-to-r from-[#0f0f0f] to-transparent pointer-events-none z-10" />
-      <div className="absolute inset-y-0 right-0 w-28 bg-gradient-to-l from-[#0f0f0f] to-transparent pointer-events-none z-10" />
+      <div className="absolute inset-x-0 top-0 h-12 bg-gradient-to-b from-[#0f0f0f] to-transparent pointer-events-none z-10" />
+      <div className="absolute inset-x-0 bottom-0 h-12 bg-gradient-to-t from-[#0a0a0c] to-transparent pointer-events-none z-10" />
+      <div className="absolute inset-y-0 left-0 w-24 sm:w-36 bg-gradient-to-r from-[#0d0d0f] to-transparent pointer-events-none z-10" />
+      <div className="absolute inset-y-0 right-0 w-24 sm:w-36 bg-gradient-to-l from-[#0d0d0f] to-transparent pointer-events-none z-10" />
 
       {/* Overlaid Center Content Card: High Contrast, 100% Legible, Pure Luxury Design */}
       <div className="relative z-20 max-w-2xl mx-4 sm:mx-auto text-center bg-[#111114]/95 backdrop-blur-xl p-8 sm:p-14 border border-neutral-700/80 shadow-[0_20px_60px_rgba(0,0,0,0.95)]">
