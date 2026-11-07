@@ -24,11 +24,3 @@ export const MAPS_EMBED = `https://www.google.com/maps?q=${encodeURIComponent(MA
 
 export const whatsappLink = (text = 'Olá! Vim pelo site do PURAZI Studio.') =>
   `https://wa.me/${SITE.whatsappNumber}?text=${encodeURIComponent(text)}`;
-
-/**
- * Galeria de cortes. Coloque as fotos em public/assets/gallery/ e liste aqui.
- * Enquanto estiver vazia, a seção "Estilos" simplesmente não aparece.
- * Exemplo:
- *   { src: '/assets/gallery/corte-01.webp', alt: 'Low fade com textura' },
- */
-export const GALLERY: { src: string; alt: string }[] = [];
