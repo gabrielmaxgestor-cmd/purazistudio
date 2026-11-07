@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { SITE } from '../utils/siteConfig';
 import {
   X,
   Check,
@@ -760,7 +761,7 @@ export const BookingDrawer: React.FC<BookingDrawerProps> = ({
               {/* Action Buttons: WhatsApp & Calendário */}
               <div className="space-y-3 pt-2 font-sans">
                 <a
-                  href={`https://wa.me/5524999999999?text=${formatWhatsAppBookingMessage(confirmedAppointment)}`}
+                  href={`https://wa.me/${SITE.whatsappNumber}?text=${formatWhatsAppBookingMessage(confirmedAppointment)}`}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="w-full bg-[#25D366] hover:bg-[#20bd5a] text-black font-extrabold py-4 px-5 text-xs sm:text-sm tracking-wider uppercase flex items-center justify-center gap-2.5 transition-colors rounded-none shadow-lg cursor-pointer"
