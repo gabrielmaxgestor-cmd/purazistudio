@@ -2,29 +2,80 @@ import React, { useState, useEffect } from 'react';
 import { BookingDrawer } from './components/BookingDrawer';
 import { ConsultAppointmentModal } from './components/ConsultAppointmentModal';
 import { BarberAdminPanel } from './components/BarberAdminPanel';
-import { ServicesModal } from './components/ServicesModal';
 import { Navbar } from './components/Navbar';
-import { MiniBookingAgenda } from './components/MiniBookingAgenda';
-import { HaircutCarouselSection } from './components/HaircutCarouselSection';
-import { Service, DayOption } from './utils/bookingLogic';
-import { getStoredServices } from './utils/storage';
-import { ArrowRight } from 'lucide-react';
+import { Service, DayOption, BarberSettings, DEFAULT_BARBER_SETTINGS } from './utils/bookingLogic';
+import { getStoredServices, getStoredBarberSettings } from './utils/storage';
+import { SITE, MAPS_LINK, MAPS_EMBED, GALLERY, whatsappLink } from './utils/siteConfig';
+import { ArrowRight, ArrowUpRight, Instagram } from 'lucide-react';
+
+/* ---------- helpers de exibição ---------- */
+
+const formatPrice = (value: number) => `R$ ${value.toFixed(2).replace('.', ',')}`;
+
+const formatTime = (t: string) => {
+  const [h, m] = t.split(':');
+  return m === '00' ? `${h}h` : `${h}h${m}`;
+};
+
+// Ex.: folga no domingo -> "Seg a Sáb"
+const formatOpenDays = (off: number[]) => {
+  const names: Record<number, string> = { 1: 'Seg', 2: 'Ter', 3: 'Qua', 4: 'Qui', 5: 'Sex', 6: 'Sáb', 0: 'Dom' };
+  const order = [1, 2, 3, 4, 5, 6, 0].filter((d) => !off.includes(d));
+  if (order.length === 0) return '';
+  const runs: number[][] = [];
+  order.forEach((d) => {
+    const last = runs[runs.length - 1];
+    const prevIdx = last ? [1, 2, 3, 4, 5, 6, 0].indexOf(last[last.length - 1]) : -2;
+    if (last && [1, 2, 3, 4, 5, 6, 0].indexOf(d) === prevIdx + 1) last.push(d);
+    else runs.push([d]);
+  });
+  return runs
+    .map((r) => (r.length >= 3 ? `${names[r[0]]} a ${names[r[r.length - 1]]}` : r.map((d) => names[d]).join(', ')))
+    .join(' · ');
+};
+
+const Eyebrow: React.FC<{ children: React.ReactNode }> = ({ children }) => (
+  <p className="text-[11px] uppercase tracking-[0.32em] text-amber-400 font-medium">{children}</p>
+);
 
 export default function App() {
   const [bookingOpen, setBookingOpen] = useState(false);
   const [consultOpen, setConsultOpen] = useState(false);
-  const [servicesOpen, setServicesOpen] = useState(false);
   const [adminOpen, setAdminOpen] = useState(false);
   const [selectedServiceId, setSelectedServiceId] = useState<string | null>(null);
   const [selectedDay, setSelectedDay] = useState<DayOption | null>(null);
   const [selectedTime, setSelectedTime] = useState<string | null>(null);
 
   const [services, setServices] = useState<Service[]>([]);
+  const [settings, setSettings] = useState<BarberSettings>(DEFAULT_BARBER_SETTINGS);
   const [refreshKey, setRefreshKey] = useState(0);
 
   useEffect(() => {
     setServices(getStoredServices());
+    setSettings(getStoredBarberSettings());
   }, [refreshKey]);
+
+  // Entrada suave das seções (respeita "reduzir movimento" via CSS)
+  useEffect(() => {
+    const els = Array.from(document.querySelectorAll<HTMLElement>('.reveal:not(.is-visible)'));
+    if (!('IntersectionObserver' in window)) {
+      els.forEach((el) => el.classList.add('is-visible'));
+      return;
+    }
+    const io = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((e) => {
+          if (e.isIntersecting) {
+            e.target.classList.add('is-visible');
+            io.unobserve(e.target);
+          }
+        });
+      },
+      { threshold: 0.12 }
+    );
+    els.forEach((el) => io.observe(el));
+    return () => io.disconnect();
+  }, [services.length]);
 
   const handleOpenBookingWithService = (serviceId?: string) => {
     setSelectedServiceId(serviceId || null);
@@ -33,294 +84,267 @@ export default function App() {
     setBookingOpen(true);
   };
 
-  const handleMiniAgendaSelect = (day: DayOption, time: string) => {
-    setSelectedDay(day);
-    setSelectedTime(time);
-    setSelectedServiceId(null);
-    setBookingOpen(true);
+  const handleDataChanged = () => setRefreshKey((prev) => prev + 1);
+
+  const scrollToId = (id: string) => {
+    document.getElementById(id)?.scrollIntoView({ behavior: 'smooth' });
   };
 
-  const handleDataChanged = () => {
-    setRefreshKey((prev) => prev + 1);
-  };
-
-  const scrollToTop = (e?: React.MouseEvent) => {
-    if (e) e.preventDefault();
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-  };
+  const openDays = formatOpenDays(settings.fixedOffDays);
+  const hoursLabel = `${openDays ? openDays + ' · ' : ''}${formatTime(settings.workStart)} às ${formatTime(settings.workEnd)}`;
 
   return (
-    <div id="top" className="min-h-screen bg-[#0f0f0f] text-white">
-      {/* ========================================================================= */}
-      {/* 1. BARRA DE NAVEGAÇÃO SUPERIOR CONFORME REQUISITO 1                        */}
-      {/* Fixa, discreta, transparente sobre o cinza inicial e grafite com desfoque  */}
-      {/* ========================================================================= */}
+    <div id="top" className="min-h-screen bg-[#0b0b0c] text-[#f4f1ec]">
       <Navbar
         onOpenBooking={() => handleOpenBookingWithService()}
         onOpenConsult={() => setConsultOpen(true)}
-        onOpenServices={() => setServicesOpen(true)}
+        onOpenServices={() => scrollToId('servicos')}
         onOpenAdmin={() => setAdminOpen(true)}
       />
 
-      {/* ========================================================================= */}
-      {/* ESTRUTURA ORIGINAL FIEL AO DESIGN ANEXADO PELO USUÁRIO                    */}
-      {/* Imagem original com 100% de nitidez, sem manchas ou blocos cortados       */}
-      {/* Caixas de textos interativas identificadas e posicionadas com precisão    */}
-      {/* ========================================================================= */}
-      {/* ========================================================================= */}
-      {/* ESTRUTURA CONTÍNUA E FIEL AO DESIGN ORIGINAL                              */}
-      {/* 1. Dobras 1 a 3: Hero + Agendamento Online + Clipper + Localização        */}
-      {/* 2. Dobra 4: Dúvidas / WhatsApp com carrossel dinâmico                     */}
-      {/* 3. Dobra 5: Rodapé institucional limpo com texto direto no fundo escuro   */}
-      {/* ========================================================================= */}
-      <main className="w-full bg-[#0f0f0f]">
-        <h1 className="sr">PURAZI Studio — Aqui, cada detalhe valoriza sua melhor versão. Barbearia em Valença/RJ</h1>
+      <div className="nav-spacer" aria-hidden="true" />
 
-        {/* ------------------------------------------------------------------------- */}
-        {/* PARTE 1: CANVAS SUPERIOR (Hero, Agendamento, Máquina de corte e Mapa)     */}
-        {/* ------------------------------------------------------------------------- */}
-        <div className="page relative max-w-[1366px] mx-auto leading-none bg-[#0f0f0f]">
-          <img
-            src="/assets/purazi-top.webp"
-            alt="PURAZI Studio — Barbearia &amp; Visagismo em Valença/RJ"
-            width={1366}
-            height={2254}
-            loading="eager"
-            className="w-full h-auto block bg-canvas"
-          />
-
-          {/* 1. HERO: Título Principal */}
-          <div
-            className="h pointer-events-auto rounded transition-colors group"
-            style={{
-              left: '49.78%',
-              top: '6.65%',
-              width: '42.00%',
-              height: '10.15%',
-            }}
-            title="PURAZI Studio: Aqui, cada detalhe valoriza sua melhor versão."
-          >
-            <span className="sr">Aqui, cada detalhe valoriza sua melhor versão.</span>
-          </div>
-
-          {/* Logotipo Oficial PURAZI Studio no Hero */}
-          <a
-            href="#top"
-            onClick={scrollToTop}
-            className="h rounded transition-all duration-200 hover:ring-1 hover:ring-neutral-400/30"
-            style={{
-              left: '76.13%',
-              top: '19.28%',
-              width: '16.10%',
-              height: '3.75%',
-            }}
-            title="PURAZI Studio — Voltar ao topo"
-            aria-label="PURAZI Studio — Voltar ao topo"
-          >
-            <span className="sr">PURAZI Studio</span>
-          </a>
-
-          {/* 2. DOBRA 2: 'Agende seu horário abaixo:' + Subtítulo */}
-          <div
-            className="h rounded select-text"
-            style={{
-              left: '20.00%',
-              top: '33.58%',
-              width: '60.00%',
-              height: '3.90%',
-            }}
-            title="Agende seu horário abaixo"
-          >
-            <span className="sr">Agende seu horário abaixo:</span>
-          </div>
-
-          <div
-            className="h rounded select-text"
-            style={{
-              left: '20.00%',
-              top: '37.48%',
-              width: '60.00%',
-              height: '2.19%',
-            }}
-            title="Rápido, prático e sem intermediários. Escolha o serviço, barbeiro e confirme em 1 minuto."
-          >
-            <span className="sr">Rápido, prático e sem intermediários. Escolha o serviço, barbeiro e confirme em 1 minuto.</span>
-          </div>
-
-          {/* Botão Único e Destacado: 'Iniciar agendamento online' - alinhado ao texto com os estilos solicitados */}
-          <div
-            className="absolute left-1/2 -translate-x-1/2 z-20 pointer-events-auto w-full flex justify-center px-4"
-            style={{
-              top: '42.78%',
-            }}
-          >
-            <button
-              type="button"
-              onClick={() => handleOpenBookingWithService()}
-              style={{
-                marginLeft: '100px',
-                paddingLeft: '25px',
-                paddingRight: '25px',
-                paddingTop: '14px',
-                paddingBottom: '14px',
-                marginTop: '-25px',
-                marginBottom: '0px',
-              }}
-              className="group relative inline-flex items-center justify-center gap-2.5 sm:gap-3.5 bg-black text-white hover:bg-neutral-900 border-2 border-amber-400 hover:border-amber-300 text-[11px] sm:text-sm md:text-base font-bold tracking-[0.12em] sm:tracking-[0.25em] uppercase whitespace-nowrap rounded-none shadow-[0_12px_35px_rgba(0,0,0,0.85),0_0_25px_rgba(251,191,36,0.35)] hover:shadow-[0_15px_45px_rgba(0,0,0,0.95),0_0_35px_rgba(251,191,36,0.6)] transition-all duration-300 transform hover:-translate-y-1 active:translate-y-0 cursor-pointer"
-              aria-label="Iniciar agendamento online"
-            >
-              <span className="w-2.5 h-2.5 rounded-full bg-amber-400 group-hover:scale-125 transition-transform animate-pulse" />
-              <span>Iniciar agendamento online</span>
-              <ArrowRight className="w-4 h-4 sm:w-5 sm:h-5 text-amber-400 transition-transform group-hover:translate-x-1" />
-            </button>
-          </div>
-
-          {/* 3. DOBRA 3: Localização com Pin e Endereço Avenida Nilo Peçanha */}
-          <a
-            id="secao-localizacao"
-            href="https://www.google.com/maps/search/?api=1&query=Avenida+Nilo+Pe%C3%A7anha+1027+Valen%C3%A7a+RJ"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="h rounded cursor-pointer transition-all duration-200 hover:ring-1 hover:ring-red-400/40 hover:bg-white/[0.02] scroll-mt-24 sm:scroll-mt-28"
-            style={{
-              left: '24.30%',
-              top: '81.21%',
-              width: '61.00%',
-              height: '13.34%',
-            }}
-            aria-label="Avenida Nilo Peçanha, 1027 - Valença/RJ. Abrir no Google Maps"
-            title="Abrir localização no Google Maps: Avenida Nilo Peçanha, 1027 - Valença/RJ"
-          >
-            <span className="sr">Avenida Nilo Peçanha, 1027 - Valença/RJ</span>
-          </a>
-        </div>
-
-        {/* ------------------------------------------------------------------------- */}
-        {/* PARTE 2: SEÇÃO WHATSAPP & DÚVIDAS (Fluxo contínuo logo abaixo do mapa)    */}
-        {/* ------------------------------------------------------------------------- */}
-        <HaircutCarouselSection />
-
-        {/* ------------------------------------------------------------------------- */}
-        {/* PARTE 3: RODAPÉ INSTITUCIONAL CONTÍNUO (Texto direto no fundo escuro)     */}
-        {/* Sem caixas de fundo atrás do texto - limpo, legível e responsivo          */}
-        {/* ------------------------------------------------------------------------- */}
-        <footer className="w-full bg-[#0a0a0c] border-t border-neutral-800/60 pt-16 pb-12 px-6 sm:px-10 lg:px-16 text-neutral-300">
-          <div className="max-w-[1366px] mx-auto grid grid-cols-1 md:grid-cols-3 gap-10 lg:gap-14">
-            {/* Coluna 1: Logotipo + Descrição Institucional + Cidade */}
-            <div className="flex flex-col items-start">
-              <a
-                href="#top"
-                onClick={scrollToTop}
-                className="inline-block transition-opacity duration-200 hover:opacity-85 mb-5"
-                title="PURAZI Studio — Voltar ao topo"
-                aria-label="PURAZI Studio"
-              >
-                <img
-                  src="/assets/aistudio/Logotipo_minimalista_PURAZI_studio_586fcc6b.png"
-                  alt="PURAZI Studio"
-                  className="h-8 sm:h-9 w-auto object-contain brightness-0 invert"
-                />
-              </a>
-              <p className="font-sans text-xs sm:text-sm text-neutral-300 leading-relaxed font-normal max-w-sm mb-4">
-                Aqui, cada detalhe valoriza sua melhor versão. Barbearia moderna com agendamento online inteligente, pontualidade e técnicas de visagismo sob medida.
+      <main>
+        {/* ============================ 1. HERO ============================ */}
+        <section className="relative overflow-hidden">
+          <div className="max-w-[1200px] mx-auto px-6 sm:px-10 py-16 sm:py-24 lg:py-28 grid lg:grid-cols-[1.1fr_0.9fr] gap-14 lg:gap-20 items-center">
+            <div className="reveal">
+              <Eyebrow>Barbearia &amp; Visagismo · Valença/RJ</Eyebrow>
+              <h1 className="mt-6 font-serif text-[2.6rem] sm:text-6xl lg:text-7xl leading-[1.04] font-medium tracking-tight text-[#f4f1ec]">
+                Aqui, cada detalhe valoriza sua{' '}
+                <em className="not-italic text-amber-300">melhor versão.</em>
+              </h1>
+              <p className="mt-7 max-w-md text-[15px] leading-relaxed text-[#9a968f]">
+                Corte, barba e visagismo com hora marcada. Escolha o serviço, o dia e o horário em menos de um minuto.
               </p>
-              <div className="font-sans text-xs sm:text-sm text-white font-medium tracking-wide">
-                Valença <span className="text-neutral-500 font-normal">·</span> Rio de Janeiro
+
+              <div className="mt-10 flex flex-col sm:flex-row sm:items-center gap-5 sm:gap-8">
+                <button
+                  onClick={() => handleOpenBookingWithService()}
+                  className="group inline-flex items-center justify-center gap-3 h-14 px-9 bg-amber-400 text-black hover:bg-amber-300 text-xs uppercase tracking-[0.22em] font-semibold transition-colors cursor-pointer"
+                >
+                  Agendar horário
+                  <ArrowRight className="w-4 h-4 transition-transform group-hover:translate-x-1" />
+                </button>
+                <button
+                  onClick={() => scrollToId('servicos')}
+                  className="text-xs uppercase tracking-[0.22em] text-[#f4f1ec] hover:text-amber-300 border-b border-white/25 hover:border-amber-300 pb-1 self-start sm:self-auto transition-colors cursor-pointer"
+                >
+                  Ver serviços
+                </button>
               </div>
+
+              <p className="mt-12 text-xs tracking-[0.18em] uppercase text-[#6f6b65]">{hoursLabel}</p>
             </div>
 
-            {/* Coluna 2: Acesso Rápido */}
-            <div className="flex flex-col items-start md:items-center">
-              <div className="w-full md:max-w-xs">
-                <h3 className="font-['Cormorant_Garamond',serif] text-lg sm:text-xl font-bold text-white tracking-wide mb-4">
-                  Acesso Rápido
-                </h3>
-                <nav className="flex flex-col space-y-2.5">
-                  <a
-                    href="#top"
-                    onClick={scrollToTop}
-                    className="text-neutral-300 hover:text-white font-sans text-xs sm:text-sm tracking-wide transition-colors text-left"
-                  >
-                    Início
-                  </a>
-                  <button
-                    type="button"
-                    onClick={() => handleOpenBookingWithService()}
-                    className="text-neutral-300 hover:text-white font-sans text-xs sm:text-sm tracking-wide transition-colors text-left cursor-pointer"
-                  >
-                    Agendar Horário
-                  </button>
-                  <a
-                    href="https://www.google.com/maps/search/?api=1&query=Avenida+Nilo+Pe%C3%A7anha+1027+Valen%C3%A7a+RJ"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-neutral-300 hover:text-white font-sans text-xs sm:text-sm tracking-wide transition-colors text-left"
-                  >
-                    Localização &amp; Estrutura
-                  </a>
-                  <a
-                    href="https://wa.me/5524999999999?text=Ol%C3%A1!%20Vim%20pelo%20site%20do%20PURAZI%20Studio."
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-neutral-300 hover:text-emerald-400 font-sans text-xs sm:text-sm tracking-wide transition-colors text-left"
-                  >
-                    Falar no WhatsApp
-                  </a>
-                  <button
-                    type="button"
-                    onClick={() => setConsultOpen(true)}
-                    className="text-neutral-300 hover:text-white font-sans text-xs sm:text-sm tracking-wide transition-colors text-left cursor-pointer"
-                  >
-                    Consultar Meu Agendamento
-                  </button>
-                </nav>
-              </div>
+            <div className="reveal relative mx-auto w-full max-w-[420px] lg:max-w-none">
+              <div className="absolute -inset-3 translate-x-3 translate-y-3 border border-amber-400/40" aria-hidden="true" />
+              <img
+                src="/assets/barber-photo-clean.webp"
+                alt="Barbeiro do PURAZI Studio"
+                width={600}
+                height={640}
+                loading="eager"
+                className="relative w-full aspect-[4/5] object-cover object-top grayscale contrast-110"
+              />
+            </div>
+          </div>
+        </section>
+
+        {/* ========================== 2. SERVIÇOS ========================== */}
+        <section id="servicos" className="border-t border-white/10">
+          <div className="max-w-[1200px] mx-auto px-6 sm:px-10 py-20 sm:py-28 grid lg:grid-cols-[0.8fr_1.2fr] gap-12 lg:gap-24">
+            <div className="reveal">
+              <Eyebrow>Serviços</Eyebrow>
+              <h2 className="mt-5 font-serif text-4xl sm:text-5xl font-medium leading-tight">
+                Atendimento sob medida
+              </h2>
+              <p className="mt-5 max-w-sm text-[15px] leading-relaxed text-[#9a968f]">
+                Toque em um serviço para escolher o dia e o horário.
+              </p>
             </div>
 
-            {/* Coluna 3: Contato e Gestão */}
-            <div className="flex flex-col items-start md:items-end">
-              <div className="w-full md:max-w-xs md:text-right">
-                <h3 className="font-['Cormorant_Garamond',serif] text-lg sm:text-xl font-bold text-white tracking-wide mb-4">
-                  Contato e Gestão
-                </h3>
-                <div className="flex flex-col space-y-3">
-                  <a
-                    href="https://www.google.com/maps/search/?api=1&query=Avenida+Nilo+Pe%C3%A7anha+1027+Valen%C3%A7a+RJ"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-neutral-300 hover:text-white font-sans text-xs sm:text-sm tracking-wide leading-relaxed transition-colors"
+            <ul className="reveal border-t border-white/10">
+              {services.map((service) => (
+                <li key={service.id} className="border-b border-white/10">
+                  <button
+                    type="button"
+                    onClick={() => handleOpenBookingWithService(service.id)}
+                    className="group w-full text-left py-6 sm:py-7 flex items-start justify-between gap-6 cursor-pointer"
                   >
-                    Av. Nilo Peçanha, 1027 · Valença/RJ
-                  </a>
-                  <a
-                    href="tel:+5524999999999"
-                    className="text-white hover:text-amber-300 font-mono text-sm sm:text-base font-semibold tracking-wider transition-colors inline-block"
-                  >
-                    (24) 99999-9999
-                  </a>
-                  <div>
-                    <button
-                      type="button"
-                      onClick={() => setAdminOpen(true)}
-                      className="text-neutral-400 hover:text-amber-400 font-sans text-xs sm:text-sm tracking-wide transition-colors cursor-pointer text-left md:text-right"
-                    >
-                      Painel Administrativo do Barbeiro
-                    </button>
-                  </div>
+                    <span className="min-w-0">
+                      <span className="block font-serif text-2xl sm:text-[1.65rem] text-[#f4f1ec] group-hover:text-amber-300 transition-colors">
+                        {service.name}
+                      </span>
+                      {service.description && (
+                        <span className="mt-2 block max-w-md text-sm leading-relaxed text-[#9a968f]">
+                          {service.description}
+                        </span>
+                      )}
+                    </span>
+                    <span className="shrink-0 text-right">
+                      <span className="block font-serif text-2xl text-[#f4f1ec]">{formatPrice(service.price)}</span>
+                      <span className="mt-1 block text-[11px] uppercase tracking-[0.2em] text-[#6f6b65]">
+                        {service.durationMinutes} min
+                      </span>
+                    </span>
+                  </button>
+                </li>
+              ))}
+            </ul>
+          </div>
+        </section>
+
+        {/* ===================== 3. FAIXA DE IMAGEM ======================== */}
+        <section className="relative h-[320px] sm:h-[460px] overflow-hidden border-t border-white/10">
+          <img
+            src="/assets/clipper-clean.webp"
+            alt="Máquina de corte profissional"
+            loading="lazy"
+            className="absolute inset-0 w-full h-full object-cover object-[center_62%] grayscale"
+          />
+          <div className="absolute inset-0 bg-gradient-to-r from-[#0b0b0c]/85 via-[#0b0b0c]/40 to-[#0b0b0c]/80" aria-hidden="true" />
+          <div className="relative h-full max-w-[1200px] mx-auto px-6 sm:px-10 flex flex-col justify-center reveal">
+            <Eyebrow>Visagismo</Eyebrow>
+            <p className="mt-4 font-serif text-4xl sm:text-6xl font-medium leading-tight max-w-xl">
+              Precisão em cada detalhe.
+            </p>
+          </div>
+        </section>
+
+        {/* ===================== 4. GALERIA (opcional) ===================== */}
+        {GALLERY.length > 0 && (
+          <section className="border-t border-white/10">
+            <div className="max-w-[1200px] mx-auto px-6 sm:px-10 py-20 sm:py-28">
+              <div className="reveal flex items-end justify-between gap-6 mb-12">
+                <div>
+                  <Eyebrow>Estilos</Eyebrow>
+                  <h2 className="mt-5 font-serif text-4xl sm:text-5xl font-medium">Nosso trabalho</h2>
                 </div>
+                <a
+                  href={SITE.instagramUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="hidden sm:inline-flex items-center gap-2 text-xs uppercase tracking-[0.22em] text-[#f4f1ec] hover:text-amber-300 transition-colors"
+                >
+                  {SITE.instagramHandle} <ArrowUpRight className="w-4 h-4" />
+                </a>
+              </div>
+              <div className="reveal grid grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3">
+                {GALLERY.map((img) => (
+                  <img
+                    key={img.src}
+                    src={img.src}
+                    alt={img.alt}
+                    loading="lazy"
+                    className="w-full aspect-[4/5] object-cover grayscale hover:grayscale-0 transition-all duration-700"
+                  />
+                ))}
               </div>
             </div>
-          </div>
+          </section>
+        )}
 
-          {/* Linha inferior de copyright */}
-          <div className="max-w-[1366px] mx-auto mt-12 pt-6 border-t border-neutral-900 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs font-mono text-neutral-500">
-            <div>© PURAZI STUDIO. TODOS OS DIREITOS RESERVADOS. VALENÇA/RJ</div>
-            <div className="tracking-[0.2em] text-[10px] uppercase text-neutral-600">BARBEARIA &amp; VISAGISMO</div>
+        {/* ======================= 5. LOCALIZAÇÃO ========================== */}
+        <section id="secao-localizacao" className="border-t border-white/10">
+          <div className="max-w-[1200px] mx-auto px-6 sm:px-10 py-20 sm:py-28 grid lg:grid-cols-2 gap-12 lg:gap-20 items-center">
+            <div className="reveal">
+              <Eyebrow>Localização</Eyebrow>
+              <h2 className="mt-5 font-serif text-4xl sm:text-5xl font-medium leading-tight">Venha nos visitar</h2>
+
+              <dl className="mt-10 space-y-6 text-[15px]">
+                <div>
+                  <dt className="text-[11px] uppercase tracking-[0.22em] text-[#6f6b65]">Endereço</dt>
+                  <dd className="mt-1.5 text-[#f4f1ec]">
+                    {SITE.address} · {SITE.neighborhood}
+                    <br />
+                    {SITE.city}
+                  </dd>
+                </div>
+                <div>
+                  <dt className="text-[11px] uppercase tracking-[0.22em] text-[#6f6b65]">Horários</dt>
+                  <dd className="mt-1.5 text-[#f4f1ec]">{hoursLabel}</dd>
+                </div>
+              </dl>
+
+              <div className="mt-10 flex flex-wrap gap-3">
+                <a
+                  href={MAPS_LINK}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-2 h-12 px-7 border border-amber-400 text-amber-300 hover:bg-amber-400 hover:text-black text-xs uppercase tracking-[0.2em] font-semibold transition-colors"
+                >
+                  Como chegar <ArrowUpRight className="w-4 h-4" />
+                </a>
+                <a
+                  href={whatsappLink()}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center h-12 px-7 border border-white/20 text-[#f4f1ec] hover:border-white/60 text-xs uppercase tracking-[0.2em] font-semibold transition-colors"
+                >
+                  WhatsApp
+                </a>
+                <a
+                  href={SITE.instagramUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  aria-label="Instagram do PURAZI Studio"
+                  className="inline-flex items-center justify-center gap-2 h-12 px-5 border border-white/20 text-[#f4f1ec] hover:border-white/60 text-xs uppercase tracking-[0.2em] font-semibold transition-colors"
+                >
+                  <Instagram className="w-4 h-4" />
+                  <span className="hidden sm:inline">Instagram</span>
+                </a>
+              </div>
+            </div>
+
+            <div className="reveal relative h-[320px] sm:h-[420px] border border-white/10 overflow-hidden bg-[#111113]">
+              <iframe
+                title="Mapa do PURAZI Studio"
+                src={MAPS_EMBED}
+                loading="lazy"
+                referrerPolicy="no-referrer-when-downgrade"
+                className="absolute inset-0 w-full h-full border-0"
+                style={{ filter: 'grayscale(1) invert(0.92) contrast(0.9)' }}
+              />
+            </div>
           </div>
-        </footer>
+        </section>
       </main>
 
-      {/* Gaveta interativa de Agendamento */}
+      {/* ============================ RODAPÉ ============================= */}
+      <footer className="border-t border-white/10">
+        <div className="max-w-[1200px] mx-auto px-6 sm:px-10 py-14 flex flex-col md:flex-row md:items-start md:justify-between gap-10">
+          <div className="max-w-xs">
+            <img src="/assets/logo-purazi-white.png" alt="PURAZI Studio" className="h-8 w-auto" />
+            <p className="mt-5 text-sm leading-relaxed text-[#9a968f]">{SITE.tagline}</p>
+          </div>
+
+          <nav className="flex flex-col gap-3 text-xs uppercase tracking-[0.2em] text-[#9a968f]">
+            <button onClick={() => handleOpenBookingWithService()} className="text-left hover:text-white transition-colors cursor-pointer">Agendar horário</button>
+            <button onClick={() => setConsultOpen(true)} className="text-left hover:text-white transition-colors cursor-pointer">Consultar agendamento</button>
+            <button onClick={() => scrollToId('servicos')} className="text-left hover:text-white transition-colors cursor-pointer">Serviços</button>
+            <button onClick={() => scrollToId('secao-localizacao')} className="text-left hover:text-white transition-colors cursor-pointer">Localização</button>
+          </nav>
+
+          <div className="text-sm text-[#9a968f] leading-relaxed">
+            <p>{SITE.address} · {SITE.neighborhood}</p>
+            <p>{SITE.city}</p>
+            <a href={`tel:+${SITE.whatsappNumber}`} className="mt-3 inline-block text-[#f4f1ec] hover:text-amber-300 transition-colors">
+              {SITE.phoneDisplay}
+            </a>
+          </div>
+        </div>
+
+        <div className="border-t border-white/10">
+          <div className="max-w-[1200px] mx-auto px-6 sm:px-10 py-6 flex flex-col sm:flex-row items-center justify-between gap-3 text-[11px] uppercase tracking-[0.18em] text-[#6f6b65]">
+            <span>© {new Date().getFullYear()} PURAZI Studio</span>
+            <button onClick={() => setAdminOpen(true)} className="hover:text-amber-300 transition-colors cursor-pointer">
+              Área do barbeiro
+            </button>
+          </div>
+        </div>
+      </footer>
+
       <BookingDrawer
         isOpen={bookingOpen}
         onClose={() => setBookingOpen(false)}
@@ -331,24 +355,8 @@ export default function App() {
         onBookingComplete={handleDataChanged}
       />
 
-      {/* Modal de Consulta e Cancelamento de Agendamento */}
-      <ConsultAppointmentModal
-        isOpen={consultOpen}
-        onClose={() => setConsultOpen(false)}
-      />
+      <ConsultAppointmentModal isOpen={consultOpen} onClose={() => setConsultOpen(false)} />
 
-      {/* Modal de Tabela de Serviços e Visagismo */}
-      <ServicesModal
-        isOpen={servicesOpen}
-        onClose={() => setServicesOpen(false)}
-        services={services}
-        onSelectServiceForBooking={(serviceId) => {
-          setServicesOpen(false);
-          handleOpenBookingWithService(serviceId);
-        }}
-      />
-
-      {/* Painel Administrativo do Barbeiro */}
       <BarberAdminPanel
         isOpen={adminOpen}
         onClose={() => setAdminOpen(false)}
