@@ -9,17 +9,12 @@ interface NavbarProps {
   onOpenAdmin: () => void;
 }
 
-export const Navbar: React.FC<NavbarProps> = ({
-  onOpenBooking,
-  onOpenConsult,
-  onOpenServices,
-  onOpenAdmin,
-}) => {
+export const Navbar: React.FC<NavbarProps> = ({ onOpenBooking, onOpenConsult, onOpenServices, onOpenAdmin }) => {
   const [isScrolled, setIsScrolled] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   useEffect(() => {
-    const handleScroll = () => setIsScrolled(window.scrollY > 30);
+    const handleScroll = () => setIsScrolled(window.scrollY > 40);
     handleScroll();
     window.addEventListener('scroll', handleScroll, { passive: true });
     return () => window.removeEventListener('scroll', handleScroll);
@@ -37,103 +32,102 @@ export const Navbar: React.FC<NavbarProps> = ({
     document.getElementById('secao-localizacao')?.scrollIntoView({ behavior: 'smooth' });
   };
 
+  // Link com sublinhado que cresce no hover
   const linkClass =
-    'text-[11px] uppercase tracking-[0.24em] font-semibold text-neutral-700 hover:text-black transition-colors cursor-pointer whitespace-nowrap';
+    'group relative text-[11px] uppercase tracking-[0.24em] font-semibold text-white/85 hover:text-white transition-colors cursor-pointer whitespace-nowrap py-2 ' +
+    "after:content-[''] after:absolute after:left-0 after:bottom-0.5 after:h-px after:w-full after:bg-white after:origin-left after:scale-x-0 hover:after:scale-x-100 after:transition-transform after:duration-500";
 
   const mobileLinkClass =
-    'text-left hover:text-neutral-400 transition-colors py-4 flex items-center justify-between border-b border-white/10 cursor-pointer';
+    'menu-item text-left font-serif text-[2.4rem] leading-tight py-3.5 border-b border-white/10 hover:text-neutral-400 transition-colors cursor-pointer';
 
   return (
     <>
+      {/* Fixa e discreta: transparente sobre o cinza da primeira dobra; ao rolar vira grafite com desfoque */}
       <header
-        className={`fixed top-0 left-0 right-0 z-40 bg-[#dcdcd8]/95 backdrop-blur-md border-b transition-colors duration-300 pt-[env(safe-area-inset-top,0px)] ${
-          isScrolled ? 'border-black/15' : 'border-transparent'
+        data-nav
+        className={`fixed top-0 left-0 right-0 z-40 pt-[env(safe-area-inset-top,0px)] border-b transition-[background-color,border-color,box-shadow,backdrop-filter] duration-500 ease-out ${
+          isScrolled
+            ? 'bg-[#161618]/80 backdrop-blur-md border-white/10 shadow-[0_14px_34px_-16px_rgba(0,0,0,0.7)]'
+            : 'bg-transparent border-transparent'
         }`}
       >
-        <div className="max-w-[1200px] mx-auto h-16 sm:h-20 px-6 sm:px-10 grid grid-cols-[auto_1fr_auto] md:grid-cols-[1fr_auto_1fr] items-center gap-3">
-          {/* Logo à esquerda */}
-          <a
-            href="#top"
-            className="flex items-center justify-self-start cursor-pointer"
-            aria-label="PURAZI Studio — início"
-          >
-            <img src="/assets/logo-purazi-black.png" alt="PURAZI Studio" className="h-7 sm:h-9 w-auto object-contain" />
+        <div className="max-w-[1366px] mx-auto h-[4.5rem] sm:h-24 px-6 sm:px-10 flex items-center justify-between gap-6">
+          {/* Logo maior, sempre fixa à esquerda */}
+          <a href="#top" className="flex items-center shrink-0 cursor-pointer" aria-label="PURAZI Studio — início">
+            <img
+              src="/assets/logo-purazi-white.png"
+              alt="PURAZI Studio"
+              className="h-10 sm:h-[3.4rem] w-auto object-contain drop-shadow-[0_1px_10px_rgba(0,0,0,0.25)]"
+            />
           </a>
 
-          {/* Links centralizados (coluna central do grid) */}
-          <nav className="hidden md:flex items-center justify-center gap-10">
-            <button onClick={onOpenServices} className={linkClass}>Serviços</button>
-            <button onClick={scrollToLocation} className={linkClass}>Localização</button>
-            <button onClick={onOpenConsult} className={linkClass}>Meu agendamento</button>
-          </nav>
+          {/* Links + Agendar agrupados à direita */}
+          <div className="flex items-center gap-3 sm:gap-10">
+            <nav className="hidden md:flex items-center gap-9" style={{ textShadow: isScrolled ? 'none' : '0 1px 12px rgba(0,0,0,0.35)' }}>
+              <button onClick={onOpenServices} className={linkClass}>Serviços</button>
+              <button onClick={scrollToLocation} className={linkClass}>Localização</button>
+              <button onClick={onOpenConsult} className={linkClass}>Consultar agendamento</button>
+            </nav>
 
-          {/* Ações à direita */}
-          <div className="col-start-3 flex items-center justify-self-end gap-2 sm:gap-3">
             <button
               onClick={onOpenBooking}
-              className="inline-flex items-center justify-center h-10 px-5 sm:px-7 bg-black text-white hover:bg-neutral-800 text-[11px] tracking-[0.22em] uppercase font-bold transition-colors cursor-pointer"
+              className="inline-flex items-center justify-center h-10 sm:h-11 px-5 sm:px-8 bg-black text-white border border-white/15 hover:bg-white hover:text-black hover:border-white text-[11px] sm:text-xs tracking-[0.22em] uppercase font-bold transition-colors duration-300 cursor-pointer"
             >
               Agendar
             </button>
+
             <button
               onClick={() => setMobileMenuOpen(true)}
-              className="md:hidden h-10 w-10 inline-flex items-center justify-center text-black hover:text-neutral-600 transition-colors cursor-pointer"
+              className="md:hidden h-10 w-10 -mr-2 inline-flex items-center justify-center text-white hover:text-neutral-300 transition-colors cursor-pointer"
               aria-label="Abrir menu de navegação"
             >
-              <Menu className="w-6 h-6" />
+              <Menu className="w-7 h-7" />
             </button>
           </div>
         </div>
       </header>
 
-      {/* Menu mobile em tela cheia */}
+      {/* Menu mobile em tela cheia, grafite, links grandes em serifada */}
       {mobileMenuOpen && (
         <div
-          className="fixed inset-0 z-50 bg-[#17171a] text-white flex flex-col px-6 py-6 pt-[max(1.5rem,env(safe-area-inset-top,0px))]"
+          className="fixed inset-0 z-50 bg-[#161618] text-white flex flex-col px-6 pb-6 pt-[max(1rem,env(safe-area-inset-top,0px))] overflow-y-auto"
           role="dialog"
           aria-modal="true"
           aria-label="Menu principal"
         >
-          <div className="flex items-center justify-between h-10">
-            <img src="/assets/logo-purazi-white.png" alt="PURAZI Studio" className="h-7 w-auto object-contain" />
+          <div className="flex items-center justify-between h-[4.5rem] shrink-0">
+            <img src="/assets/logo-purazi-white.png" alt="PURAZI Studio" className="h-10 w-auto object-contain" />
             <button
               onClick={() => setMobileMenuOpen(false)}
-              className="text-[#9a968f] hover:text-white p-2 -mr-2 transition-colors cursor-pointer"
+              className="text-white/70 hover:text-white p-2 -mr-2 transition-colors cursor-pointer"
               aria-label="Fechar menu"
             >
-              <X className="w-7 h-7" />
+              <X className="w-8 h-8" />
             </button>
           </div>
 
-          <nav className="flex flex-col my-auto font-serif text-3xl">
-            <button onClick={() => { setMobileMenuOpen(false); window.scrollTo({ top: 0, behavior: 'smooth' }); }} className={mobileLinkClass}>
-              <span>Início</span>
-            </button>
-            <button onClick={() => { setMobileMenuOpen(false); onOpenServices(); }} className={mobileLinkClass}>
-              <span>Serviços</span>
-            </button>
-            <button onClick={() => { setMobileMenuOpen(false); scrollToLocation(); }} className={mobileLinkClass}>
-              <span>Localização</span>
-            </button>
-            <button onClick={() => { setMobileMenuOpen(false); onOpenConsult(); }} className={mobileLinkClass}>
-              <span>Meu agendamento</span>
-            </button>
+          <nav className="flex flex-col my-auto py-6">
+            <button style={{ animationDelay: '60ms' }} onClick={() => { setMobileMenuOpen(false); window.scrollTo({ top: 0, behavior: 'smooth' }); }} className={mobileLinkClass}>Início</button>
+            <button style={{ animationDelay: '120ms' }} onClick={() => { setMobileMenuOpen(false); onOpenServices(); }} className={mobileLinkClass}>Serviços</button>
+            <button style={{ animationDelay: '180ms' }} onClick={() => { setMobileMenuOpen(false); scrollToLocation(); }} className={mobileLinkClass}>Localização</button>
+            <button style={{ animationDelay: '240ms' }} onClick={() => { setMobileMenuOpen(false); onOpenConsult(); }} className={mobileLinkClass}>Meu agendamento</button>
             <button
+              style={{ animationDelay: '300ms' }}
               onClick={() => { setMobileMenuOpen(false); onOpenAdmin(); }}
-              className="text-left py-4 text-xl text-neutral-500 hover:text-neutral-300 transition-colors cursor-pointer"
+              className="menu-item text-left py-4 text-sm uppercase tracking-[0.22em] text-white/40 hover:text-white/70 transition-colors cursor-pointer"
             >
               Área do barbeiro
             </button>
           </nav>
 
-          <div className="pt-6 border-t border-white/10 flex flex-col gap-4 pb-[env(safe-area-inset-bottom,0px)]">
+          <div className="shrink-0 pt-5 border-t border-white/10 flex flex-col gap-4 pb-[env(safe-area-inset-bottom,0px)]">
             <button
               onClick={() => { setMobileMenuOpen(false); onOpenBooking(); }}
-              className="w-full h-14 bg-white text-black hover:bg-neutral-200 uppercase tracking-[0.24em] text-xs font-semibold transition-colors cursor-pointer"
+              className="w-full h-14 bg-white text-black hover:bg-neutral-200 uppercase tracking-[0.24em] text-xs font-bold transition-colors cursor-pointer"
             >
               Agendar horário
             </button>
-            <p className="text-center text-[11px] text-[#6f6b65] tracking-[0.18em] uppercase">
+            <p className="text-center text-[11px] text-white/40 tracking-[0.18em] uppercase">
               {SITE.address} · {SITE.city}
             </p>
           </div>
