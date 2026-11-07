@@ -32,16 +32,6 @@ body {
   padding-bottom: env(safe-area-inset-bottom, 0px);
 }
 
-/* Reserva o espaço da navbar fixa (h-16 no mobile / h-20 no desktop + safe-area) */
-.nav-spacer {
-  height: calc(4rem + env(safe-area-inset-top, 0px));
-}
-@media (min-width: 640px) {
-  .nav-spacer {
-    height: calc(5rem + env(safe-area-inset-top, 0px));
-  }
-}
-
 /* Fundo de concreto (sem texto embutido) */
 .bg-concrete {
   background-color: #b7b8b3;
@@ -67,19 +57,44 @@ body {
   mask-composite: intersect;
 }
 
-/* Entrada suave ao rolar */
-.reveal {
+/* Retrato fundido ao fundo de concreto: dissolve nas bordas (direita e topo) */
+.fade-portrait {
+  -webkit-mask-image:
+    linear-gradient(to right, #000 68%, transparent 100%),
+    linear-gradient(to bottom, transparent 0%, #000 16%);
+  -webkit-mask-composite: source-in;
+  mask-image:
+    linear-gradient(to right, #000 68%, transparent 100%),
+    linear-gradient(to bottom, transparent 0%, #000 16%);
+  mask-composite: intersect;
+}
+
+/* Textura de filme (grão) sobre as áreas escuras: tira o aspecto "chapado/digital" */
+.grain { position: relative; }
+.grain::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 1;
+  opacity: 0.09;
+  mix-blend-mode: overlay;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='220' height='220'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 1  0 0 0 0 1  0 0 0 0 1  0 0 0 0.9 0'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>");
+}
+
+/* Itens do menu mobile entram em cascata */
+@keyframes menuIn {
+  from { opacity: 0; transform: translateY(18px); }
+  to { opacity: 1; transform: none; }
+}
+.menu-item {
   opacity: 0;
-  transform: translateY(14px);
-  transition: opacity 0.9s cubic-bezier(0.2, 0.6, 0.2, 1), transform 0.9s cubic-bezier(0.2, 0.6, 0.2, 1);
+  animation: menuIn 0.6s cubic-bezier(0.2, 0.7, 0.2, 1) forwards;
 }
-.reveal.is-visible {
-  opacity: 1;
-  transform: none;
-}
+
 @media (prefers-reduced-motion: reduce) {
   html { scroll-behavior: auto; }
-  .reveal { opacity: 1; transform: none; transition: none; }
+  .menu-item { animation: none; opacity: 1; }
 }
 
 .sr {
