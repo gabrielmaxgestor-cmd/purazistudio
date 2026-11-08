@@ -1,15 +1,49 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef, useLayoutEffect } from 'react';
 import { Menu, X } from 'lucide-react';
 import { SITE } from '../utils/siteConfig';
+
+/** Texto que "embaralha" e se resolve ao passar o mouse (inspirado em Decrypted Text / React Bits) */
+const ScrambleText: React.FC<{ text: string }> = ({ text }) => {
+  const [out, setOut] = useState(text);
+  const [width, setWidth] = useState<number | undefined>();
+  const ref = useRef<HTMLSpanElement>(null);
+  const raf = useRef(0);
+
+  useLayoutEffect(() => {
+    if (ref.current) setWidth(ref.current.offsetWidth);
+  }, [text]);
+
+  const run = () => {
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    cancelAnimationFrame(raf.current);
+    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+    const total = 16;
+    let frame = 0;
+    const tick = () => {
+      frame++;
+      const progress = (frame / total) * text.length;
+      setOut(text.split('').map((c, i) => (c === ' ' || i < progress ? c : chars[Math.floor(Math.random() * chars.length)])).join(''));
+      if (frame < total) raf.current = requestAnimationFrame(tick);
+      else setOut(text);
+    };
+    raf.current = requestAnimationFrame(tick);
+  };
+
+  return (
+    <span ref={ref} onMouseEnter={run} className="inline-block text-left" style={{ width }} aria-label={text}>
+      <span aria-hidden="true">{out}</span>
+    </span>
+  );
+};
 
 interface NavbarProps {
   onOpenBooking: () => void;
   onOpenConsult: () => void;
   onOpenServices: () => void;
-  onOpenAdmin: () => void;
+  onOpenAdmin?: () => void;
 }
 
-export const Navbar: React.FC<NavbarProps> = ({ onOpenBooking, onOpenConsult, onOpenServices, onOpenAdmin }) => {
+export const Navbar: React.FC<NavbarProps> = ({ onOpenBooking, onOpenConsult, onOpenServices }) => {
   const [isScrolled, setIsScrolled] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
@@ -64,14 +98,14 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenBooking, onOpenConsult, on
           {/* Links + Agendar agrupados à direita */}
           <div className="flex items-center gap-3 sm:gap-10">
             <nav className="hidden md:flex items-center gap-9" style={{ textShadow: isScrolled ? 'none' : '0 1px 12px rgba(0,0,0,0.35)' }}>
-              <button onClick={onOpenServices} className={linkClass}>Serviços</button>
-              <button onClick={scrollToLocation} className={linkClass}>Localização</button>
-              <button onClick={onOpenConsult} className={linkClass}>Consultar agendamento</button>
+              <button onClick={onOpenServices} className={linkClass}><ScrambleText text="Serviços" /></button>
+              <button onClick={scrollToLocation} className={linkClass}><ScrambleText text="Localização" /></button>
+              <button onClick={onOpenConsult} className={linkClass}><ScrambleText text="Consultar agendamento" /></button>
             </nav>
 
             <button
               onClick={onOpenBooking}
-              className="inline-flex items-center justify-center h-10 sm:h-11 px-5 sm:px-8 bg-black text-white border border-white/15 hover:bg-white hover:text-black hover:border-white text-[11px] sm:text-xs tracking-[0.22em] uppercase font-bold transition-colors duration-300 cursor-pointer"
+              className="beam inline-flex items-center justify-center h-10 sm:h-11 px-5 sm:px-8 bg-black text-white border border-white/15 hover:bg-white hover:text-black hover:border-white text-[11px] sm:text-xs tracking-[0.22em] uppercase font-bold transition-colors duration-300 cursor-pointer"
             >
               Agendar
             </button>
@@ -111,13 +145,6 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenBooking, onOpenConsult, on
             <button style={{ animationDelay: '120ms' }} onClick={() => { setMobileMenuOpen(false); onOpenServices(); }} className={mobileLinkClass}>Serviços</button>
             <button style={{ animationDelay: '180ms' }} onClick={() => { setMobileMenuOpen(false); scrollToLocation(); }} className={mobileLinkClass}>Localização</button>
             <button style={{ animationDelay: '240ms' }} onClick={() => { setMobileMenuOpen(false); onOpenConsult(); }} className={mobileLinkClass}>Meu agendamento</button>
-            <button
-              style={{ animationDelay: '300ms' }}
-              onClick={() => { setMobileMenuOpen(false); onOpenAdmin(); }}
-              className="menu-item text-left py-4 text-sm uppercase tracking-[0.22em] text-white/40 hover:text-white/70 transition-colors cursor-pointer"
-            >
-              Área do barbeiro
-            </button>
           </nav>
 
           <div className="shrink-0 pt-5 border-t border-white/10 flex flex-col gap-4 pb-[env(safe-area-inset-bottom,0px)]">
