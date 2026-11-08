@@ -92,8 +92,100 @@ body {
   animation: menuIn 0.6s cubic-bezier(0.2, 0.7, 0.2, 1) forwards;
 }
 
+/* ===== Animações do sistema de agendamento ===== */
+@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+@keyframes drawerIn { from { transform: translateX(40px); opacity: 0; } to { transform: none; opacity: 1; } }
+@keyframes stepIn { from { opacity: 0; transform: translateX(22px); } to { opacity: 1; transform: none; } }
+@keyframes slotIn { from { opacity: 0; transform: translateY(8px) scale(0.96); } to { opacity: 1; transform: none; } }
+.slot-in { animation: slotIn 0.4s cubic-bezier(0.2, 0.8, 0.2, 1) both; }
+.draw-check { stroke-dasharray: 40; stroke-dashoffset: 40; animation: drawCheck 0.7s 0.25s cubic-bezier(0.65, 0, 0.35, 1) forwards; }
+@keyframes drawCheck { to { stroke-dashoffset: 0; } }
+
+/* Border Beam: anel de luz que gira na borda (inspirado em Border Beam / Magic UI via 21st.dev) */
+@property --beam-angle { syntax: '<angle>'; initial-value: 0deg; inherits: false; }
+@keyframes beamSpin { to { --beam-angle: 360deg; } }
+.beam { position: relative; }
+.beam::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  padding: 1.5px;
+  pointer-events: none;
+  z-index: 3;
+  background: conic-gradient(from var(--beam-angle), transparent 0 72%, rgba(255, 255, 255, 0.95) 86%, transparent 100%);
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask: linear-gradient(#000 0 0) content-box exclude, linear-gradient(#000 0 0);
+  animation: beamSpin 5s linear infinite;
+}
+
+/* Shiny Text: brilho que atravessa o texto (inspirado em React Bits) */
+.shiny-text {
+  background: linear-gradient(110deg, #77736c 35%, #ffffff 50%, #77736c 65%);
+  background-size: 250% 100%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  animation: shineText 3.4s linear infinite;
+}
+@keyframes shineText { from { background-position: 150% 0; } to { background-position: -100% 0; } }
+
+/* Respiração de luz no botão principal */
+@keyframes glowPulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(255, 255, 255, 0.0), 0 0 34px -10px rgba(255, 255, 255, 0.25); }
+  50% { box-shadow: 0 0 0 6px rgba(255, 255, 255, 0.05), 0 0 46px -6px rgba(255, 255, 255, 0.42); }
+}
+
+/* Fundo de pontos (estilo "dotted surface"): fixo e suave + camada mais viva que acompanha o cursor */
+.bg-dots {
+  background-image: radial-gradient(rgba(255, 255, 255, 0.11) 1px, transparent 1.3px);
+  background-size: 30px 30px;
+}
+.bg-dots-live {
+  background-image: radial-gradient(rgba(255, 255, 255, 0.55) 1.1px, transparent 1.5px);
+  background-size: 30px 30px;
+  -webkit-mask-image: radial-gradient(230px circle at var(--mx, 50%) var(--my, 20%), #000, transparent 70%);
+  mask-image: radial-gradient(230px circle at var(--mx, 50%) var(--my, 20%), #000, transparent 70%);
+}
+
+/* Feixes de luz lentos atravessando as áreas escuras */
+.light-beam {
+  position: absolute;
+  top: -25%;
+  left: -40%;
+  width: 34%;
+  height: 150%;
+  pointer-events: none;
+  background: linear-gradient(100deg, transparent, rgba(255, 255, 255, 0.055), transparent);
+  filter: blur(26px);
+  animation: beamDrift 16s ease-in-out infinite alternate;
+}
+.light-beam.b2 { width: 22%; animation-duration: 22s; animation-delay: -9s; opacity: 0.8; }
+@keyframes beamDrift {
+  from { transform: translateX(0) skewX(-18deg); }
+  to { transform: translateX(520%) skewX(-18deg); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .beam::after, .shiny-text, .light-beam { animation: none; }
+}
+
+/* Spotlight: brilho que segue o mouse dentro de cartões (inspirado em Spotlight Card / 21st.dev) */
+.spot { position: relative; overflow: hidden; }
+.spot::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  transition: opacity 0.35s;
+  pointer-events: none;
+  background: radial-gradient(260px circle at var(--sx, 50%) var(--sy, 50%), rgba(255, 255, 255, 0.11), transparent 70%);
+}
+.spot:hover::before { opacity: 1; }
+
 @media (prefers-reduced-motion: reduce) {
   html { scroll-behavior: auto; }
+  .slot-in, .draw-check { animation: none; stroke-dashoffset: 0; }
   .menu-item { animation: none; opacity: 1; }
 }
 
