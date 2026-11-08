@@ -96,7 +96,7 @@ export default function App() {
       // ---- Hero: entrada orquestrada (fica pausada até a abertura terminar) ----
       const tl = gsap.timeline({ paused: true, defaults: { ease: 'power3.out' } });
       tl.from('[data-hero-photo]', { opacity: 0, scale: 1.08, duration: 2, ease: 'power2.out' }, 0)
-        .from('[data-hero-word]', { yPercent: 115, duration: 1.15, stagger: 0.09 }, 0.2)
+        .from('[data-hero-word]', { yPercent: 115, opacity: 0, filter: 'blur(10px)', duration: 1.2, stagger: 0.09 }, 0.2)
         .from('[data-hero-logo]', { opacity: 0, y: 26, duration: 1.1 }, 0.9)
         .from('[data-nav]', { y: -36, opacity: 0, duration: 1 }, 0.5);
       heroTl.current = tl;
@@ -134,7 +134,9 @@ export default function App() {
       gsap.utils.toArray<HTMLElement>('[data-split]').forEach((el) => {
         gsap.from(el.querySelectorAll('[data-word]'), {
           yPercent: 115,
-          duration: 1.1,
+          opacity: 0,
+          filter: 'blur(10px)',
+          duration: 1.2,
           stagger: 0.07,
           ease: 'power4.out',
           scrollTrigger: { trigger: el, start: 'top 85%', once: true },
@@ -203,6 +205,23 @@ export default function App() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // Acesso ao painel do barbeiro: somente pelo link privado  seusite.com/#barbeiro  (não há botão público)
+  useEffect(() => {
+    const check = () => {
+      if (window.location.hash === '#barbeiro') setAdminOpen(true);
+    };
+    check();
+    window.addEventListener('hashchange', check);
+    return () => window.removeEventListener('hashchange', check);
+  }, []);
+
+  const closeAdmin = () => {
+    setAdminOpen(false);
+    if (window.location.hash === '#barbeiro') {
+      history.replaceState(null, '', window.location.pathname + window.location.search);
+    }
+  };
+
   // Quando a abertura termina, o hero entra em cena
   useEffect(() => {
     if (introDone) heroTl.current?.play();
@@ -237,6 +256,12 @@ export default function App() {
 
   const handleDataChanged = () => setRefreshKey((prev) => prev + 1);
 
+  const spotMove = (e: React.MouseEvent<HTMLElement>) => {
+    const r = e.currentTarget.getBoundingClientRect();
+    e.currentTarget.style.setProperty('--sx', `${e.clientX - r.left}px`);
+    e.currentTarget.style.setProperty('--sy', `${e.clientY - r.top}px`);
+  };
+
   const scrollToId = (id: string) => document.getElementById(id)?.scrollIntoView({ behavior: 'smooth' });
 
   const openDays = formatOpenDays(settings.fixedOffDays);
@@ -253,7 +278,6 @@ export default function App() {
         onOpenBooking={() => handleOpenBookingWithService()}
         onOpenConsult={() => setConsultOpen(true)}
         onOpenServices={() => handleOpenBookingWithService()}
-        onOpenAdmin={() => setAdminOpen(true)}
       />
 
       <main>
@@ -306,6 +330,15 @@ export default function App() {
             style={{ background: 'radial-gradient(520px circle at var(--mx) var(--my), rgba(255,255,255,0.055), transparent 62%)' }}
           />
 
+          {/* fundo de pontos que acende perto do cursor + feixes de luz lentos */}
+          <div
+            className="absolute inset-0 pointer-events-none bg-dots"
+            style={{ WebkitMaskImage: 'linear-gradient(to bottom, transparent, #000 8%, #000 92%, transparent)', maskImage: 'linear-gradient(to bottom, transparent, #000 8%, #000 92%, transparent)' }}
+          />
+          <div className="absolute inset-0 pointer-events-none bg-dots-live" />
+          <div className="light-beam" />
+          <div className="light-beam b2" />
+
           <div className="relative max-w-[1366px] mx-auto grid grid-cols-[clamp(66px,13vw,190px)_1fr]">
             {/* PURAZI vertical: letras distribuídas do início ao fim das 3 seções */}
             <aside
@@ -326,7 +359,7 @@ export default function App() {
 
             <div className="min-w-0 pr-5 sm:pr-10 lg:pr-20 pl-3 sm:pl-6">
               {/* ---------- Agenda ---------- */}
-              <section className="relative min-h-[84vh] flex flex-col items-center justify-center text-center py-28 sm:py-36">
+              <section className="relative flex flex-col items-center justify-center text-center py-16 sm:py-24">
                 <div
                   className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-[min(90%,760px)] aspect-[2/1] pointer-events-none"
                   style={{ background: 'radial-gradient(closest-side, rgba(255,255,255,0.06), transparent)' }}
@@ -353,7 +386,7 @@ export default function App() {
               </section>
 
               {/* ---------- Máquina ---------- */}
-              <section data-clipper-wrap className="relative py-6 sm:py-14">
+              <section data-clipper-wrap className="relative -my-4 sm:-my-10">
                 <img
                   data-clipper
                   src="/assets/clipper-clean.webp"
@@ -364,9 +397,9 @@ export default function App() {
               </section>
 
               {/* ---------- Localização ---------- */}
-              <section id="secao-localizacao" className="relative py-24 sm:py-36 grid lg:grid-cols-[1.05fr_1fr] gap-12 lg:gap-14 items-center">
+              <section id="secao-localizacao" className="relative py-14 sm:py-24 grid lg:grid-cols-[1.05fr_1fr] gap-12 lg:gap-14 items-center">
                 <div className="min-w-0">
-                  <p data-reveal="up" className="text-[11px] uppercase tracking-[0.4em] text-neutral-500">
+                  <p data-reveal="up" className="shiny-text text-[11px] uppercase tracking-[0.4em] font-semibold">
                     Localização
                   </p>
 
@@ -399,7 +432,7 @@ export default function App() {
                 </div>
 
                 {/* mini mapa integrado */}
-                <div data-map className="relative h-[300px] sm:h-[380px] border border-white/10 bg-[#111113] overflow-hidden">
+                <div data-map onMouseMove={spotMove} className="spot beam relative h-[300px] sm:h-[380px] border border-white/10 bg-[#111113] overflow-hidden">
                   <iframe
                     title="Mapa do PURAZI Studio"
                     src={MAPS_EMBED}
@@ -464,9 +497,6 @@ export default function App() {
               <a href={SITE.instagramUrl} target="_blank" rel="noopener noreferrer" className="hover:text-white transition-colors">
                 Instagram {SITE.instagramHandle}
               </a>
-              <button onClick={() => setAdminOpen(true)} className={footerLink + ' text-neutral-500'}>
-                Painel Administrativo do Barbeiro
-              </button>
             </div>
           </div>
         </div>
@@ -491,7 +521,7 @@ export default function App() {
 
       <BarberAdminPanel
         isOpen={adminOpen}
-        onClose={() => setAdminOpen(false)}
+        onClose={closeAdmin}
         onDataChanged={handleDataChanged}
       />
     </div>
