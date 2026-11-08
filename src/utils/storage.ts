@@ -14,63 +14,35 @@ const STORAGE_KEYS = {
   SETTINGS: 'purazi_barber_settings',
 };
 
-// Realistic initial seed data for PURAZI Studio in Valença/RJ
-const INITIAL_APPOINTMENTS: Appointment[] = [
-  {
-    id: 'apt-1',
-    code: 'PRZ-4921',
-    clientName: 'Gabriel Oliveira',
-    clientPhone: '24998765432',
-    serviceId: 'combo',
-    serviceName: 'Combo PURΛZI (Corte + Barba)',
-    price: 90,
-    durationMinutes: 75,
-    dateStr: new Date().toISOString().split('T')[0],
-    timeStr: '10:30',
-    status: 'confirmed',
-    createdAt: new Date(Date.now() - 86400000).toISOString(),
-  },
-  {
-    id: 'apt-2',
-    code: 'PRZ-8120',
-    clientName: 'Lucas Ferreira',
-    clientPhone: '24981123344',
-    serviceId: 'corte',
-    serviceName: 'Corte Tradicional / Fade',
-    price: 55,
-    durationMinutes: 45,
-    dateStr: new Date().toISOString().split('T')[0],
-    timeStr: '14:30',
-    status: 'confirmed',
-    createdAt: new Date(Date.now() - 43200000).toISOString(),
-  },
-  {
-    id: 'apt-3',
-    code: 'PRZ-3394',
-    clientName: 'Mateus Souza',
-    clientPhone: '24987651234',
-    serviceId: 'barba',
-    serviceName: 'Barba Terapia & Alinhamento',
-    price: 45,
-    durationMinutes: 35,
-    dateStr: new Date(Date.now() + 86400000).toISOString().split('T')[0],
-    timeStr: '16:00',
-    status: 'confirmed',
-    createdAt: new Date().toISOString(),
-  },
-];
+// Sem dados de demonstração: o site começa com a agenda vazia.
+const INITIAL_APPOINTMENTS: Appointment[] = [];
+const INITIAL_BLOCKED: BlockedSlot[] = [];
 
-const INITIAL_BLOCKED: BlockedSlot[] = [
-  {
-    id: 'blk-1',
-    dateStr: new Date().toISOString().split('T')[0],
-    timeStr: '13:00',
-    reason: 'Intervalo de almoço',
-  },
-];
+// Remove, uma única vez, os agendamentos/bloqueios de exemplo que versões antigas gravavam no navegador
+const DEMO_FLAG = 'purazi_demo_cleaned_v1';
+function cleanDemoDataOnce() {
+  try {
+    if (localStorage.getItem(DEMO_FLAG)) return;
+    const apts = localStorage.getItem(STORAGE_KEYS.APPOINTMENTS);
+    if (apts) {
+      const list: Appointment[] = JSON.parse(apts);
+      const demoIds = ['apt-1', 'apt-2', 'apt-3'];
+      localStorage.setItem(STORAGE_KEYS.APPOINTMENTS, JSON.stringify(list.filter((a) => !demoIds.includes(a.id))));
+    }
+    const blk = localStorage.getItem(STORAGE_KEYS.BLOCKED);
+    if (blk) {
+      const list: BlockedSlot[] = JSON.parse(blk);
+      localStorage.setItem(STORAGE_KEYS.BLOCKED, JSON.stringify(list.filter((b) => b.id !== 'blk-1')));
+    }
+    localStorage.setItem(DEMO_FLAG, '1');
+  } catch {
+    /* ignora */
+  }
+}
 
 export function getStoredAppointments(): Appointment[] {
   try {
+    cleanDemoDataOnce();
     const data = localStorage.getItem(STORAGE_KEYS.APPOINTMENTS);
     if (!data) {
       localStorage.setItem(STORAGE_KEYS.APPOINTMENTS, JSON.stringify(INITIAL_APPOINTMENTS));
@@ -115,6 +87,7 @@ export function saveServices(services: Service[]): void {
 
 export function getStoredBlockedSlots(): BlockedSlot[] {
   try {
+    cleanDemoDataOnce();
     const data = localStorage.getItem(STORAGE_KEYS.BLOCKED);
     if (!data) {
       localStorage.setItem(STORAGE_KEYS.BLOCKED, JSON.stringify(INITIAL_BLOCKED));
@@ -137,7 +110,8 @@ export function getStoredBarberSettings(): BarberSettings {
       localStorage.setItem(STORAGE_KEYS.SETTINGS, JSON.stringify(DEFAULT_BARBER_SETTINGS));
       return DEFAULT_BARBER_SETTINGS;
     }
-    return { ...DEFAULT_BARBER_SETTINGS, ...JSON.parse(data) };
+    const parsed = JSON.parse(data);
+    return { ...DEFAULT_BARBER_SETTINGS, ...parsed, daySchedules: parsed.daySchedules || {} };
   } catch {
     return DEFAULT_BARBER_SETTINGS;
   }
