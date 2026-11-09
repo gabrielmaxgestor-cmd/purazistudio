@@ -7,11 +7,12 @@ import {
   Service, Appointment, BlockedSlot, BarberSettings, DEFAULT_BARBER_SETTINGS,
   getDaySchedule, todayStr,
 } from '../utils/bookingLogic';
+import { changePassword, getAuthMode, getExportableHash, logout } from '../utils/adminAuth';
 import {
-  getStoredAppointments, updateAppointmentStatus, getStoredServices, saveServices,
-  getStoredBlockedSlots, saveBlockedSlots, getStoredBarberSettings, saveBarberSettings,
-} from '../utils/storage';
-import { isLoggedIn, logout, changePassword, getAuthMode, getExportableHash } from '../utils/adminAuth';
+  dataMode, adminLoad, adminLoadLists, adminSetStatus, adminSaveSettings, adminAddBlock, adminRemoveBlock,
+  adminSaveService, adminDeleteService, adminHasSession, adminSessionAlive, adminSignOut, adminChangePassword,
+  friendlyError,
+} from '../data/api';
 import { AdminLogin } from './AdminLogin';
 
 /* ───────────────────────── helpers ───────────────────────── */
@@ -128,27 +129,42 @@ interface BarberAdminPanelProps {
 }
 
 export const BarberAdminPanel: React.FC<BarberAdminPanelProps> = ({ isOpen, onClose, onDataChanged }) => {
-  const [authed, setAuthed] = useState(isLoggedIn());
+  // null = verificando a sessão
+  const [authed, setAuthed] = useState<boolean | null>(null);
 
   useEffect(() => {
-    if (isOpen) setAuthed(isLoggedIn());
+    if (!isOpen) return;
+    let alive = true;
+    setAuthed(null);
+    adminHasSession().then((ok) => alive && setAuthed(ok)).catch(() => alive && setAuthed(false));
+    return () => {
+      alive = false;
+    };
   }, [isOpen]);
 
-  // expira a sessão enquanto o painel está aberto
+  // se a sessão expirar com o painel aberto, volta para o login
   useEffect(() => {
     if (!isOpen || !authed) return;
     const t = window.setInterval(() => {
-      if (!isLoggedIn()) setAuthed(false);
+      adminSessionAlive().then((ok) => !ok && setAuthed(false)).catch(() => undefined);
     }, 30000);
     return () => window.clearInterval(t);
   }, [isOpen, authed]);
 
   if (!isOpen) return null;
+  if (authed === null) {
+    return (
+      <div className="fixed inset-0 z-50 bg-[#0a0a0b] flex items-center justify-center text-sm text-white/50" role="status">
+        Verificando acesso…
+      </div>
+    );
+  }
   if (!authed) return <AdminLogin onSuccess={() => setAuthed(true)} onClose={onClose} />;
   return (
     <AdminShell
       onClose={onClose}
-      onLogout={() => {
+      onLogout={async () => {
+        await adminSignOut().catch(() => undefined);
         logout();
         setAuthed(false);
         onClose();
@@ -175,10 +191,12 @@ const AdminShell: React.FC<{ onClose: () => void; onLogout: () => void; onDataCh
   const [agendaView, setAgendaView] = useState<'day' | 'week'>('day');
   const [selectedDate, setSelectedDate] = useState(todayStr());
 
-  const [appointments, setAppointments] = useState<Appointment[]>(() => getStoredAppointments());
-  const [services, setServices] = useState<Service[]>(() => getStoredServices());
-  const [blocked, setBlocked] = useState<BlockedSlot[]>(() => getStoredBlockedSlots());
-  const [settings, setSettings] = useState<BarberSettings>(() => getStoredBarberSettings());
+  const [appointments, setAppointments] = useState<Appointment[]>([]);
+  const [services, setServices] = useState<Service[]>([]);
+  const [blocked, setBlocked] = useState<BlockedSlot[]>([]);
+  const [settings, setSettings] = useState<BarberSettings>(DEFAULT_BARBER_SETTINGS);
+  const [loading, setLoading] = useState(true);
+  const [busyAction, setBusyAction] = useState(false);
 
   const [toast, setToast] = useState<string | null>(null);
   const [securityOpen, setSecurityOpen] = useState(false);
@@ -216,12 +234,79 @@ const AdminShell: React.FC<{ onClose: () => void; onLogout: () => void; onDataCh
   };
   const changed = () => onDataChanged?.();
 
-  /* ----- agenda ----- */
-  const setStatus = (id: string, status: Appointment['status']) => {
-    setAppointments(updateAppointmentStatus(id, status));
-    notify(status === 'completed' ? 'Atendimento concluído.' : status === 'cancelled' ? 'Agendamento cancelado — horário liberado.' : 'Agendamento reaberto.');
-    changed();
+  const applySettings = (st: BarberSettings) => {
+    setDefStart(st.workStart);
+    setDefEnd(st.workEnd);
+    setIntervalMin(String(st.intervalMinutes || 45));
+    setOffDays(st.fixedOffDays || []);
+    setCustom(st.daySchedules || {});
   };
+
+  const refreshLists = async () => {
+    const l = await adminLoadLists();
+    setAppointments(l.appointments);
+    setBlocked(l.blocked);
+  };
+  const reloadAll = async () => {
+    const d = await adminLoad();
+    setAppointments(d.appointments);
+    setBlocked(d.blocked);
+    setServices(d.services);
+    setSettings(d.settings);
+  };
+
+  // carga inicial + atualização automática da agenda a cada 30s (novos agendamentos aparecem sozinhos)
+  useEffect(() => {
+    let alive = true;
+    adminLoad()
+      .then((d) => {
+        if (!alive) return;
+        setAppointments(d.appointments);
+        setBlocked(d.blocked);
+        setServices(d.services);
+        setSettings(d.settings);
+        applySettings(d.settings);
+        setLoading(false);
+      })
+      .catch((e) => {
+        if (!alive) return;
+        notify(friendlyError(e));
+        setLoading(false);
+      });
+    const t = window.setInterval(() => {
+      adminLoadLists().then((l) => alive && (setAppointments(l.appointments), setBlocked(l.blocked))).catch(() => undefined);
+    }, 30000);
+    return () => {
+      alive = false;
+      window.clearInterval(t);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // executa uma ação do painel mostrando erro amigável se o servidor recusar
+  const run = async (fn: () => Promise<void>, okMsg?: string) => {
+    if (busyAction) return;
+    setBusyAction(true);
+    try {
+      await fn();
+      if (okMsg) notify(okMsg);
+      changed();
+    } catch (e) {
+      notify(friendlyError(e));
+    } finally {
+      setBusyAction(false);
+    }
+  };
+
+  /* ----- agenda ----- */
+  const setStatus = (id: string, status: Appointment['status']) =>
+    run(
+      async () => {
+        await adminSetStatus(id, status);
+        await refreshLists();
+      },
+      status === 'completed' ? 'Atendimento concluído.' : status === 'cancelled' ? 'Agendamento cancelado — horário liberado.' : 'Agendamento reaberto.'
+    );
 
   const dayApts = useMemo(
     () => appointments.filter((a) => a.dateStr === selectedDate).sort((a, b) => a.timeStr.localeCompare(b.timeStr)),
@@ -259,37 +344,35 @@ const AdminShell: React.FC<{ onClose: () => void; onLogout: () => void; onDataCh
       const c = built.daySchedules?.[wd];
       if (c && c.start >= c.end) return notify(`${WEEK_LONG[wd]}: o fechamento precisa ser depois da abertura.`);
     }
-    saveBarberSettings(built);
-    setSettings(built);
-    notify('Horários salvos! Já valem na agenda dos clientes.');
-    changed();
+    run(async () => {
+      await adminSaveSettings(built);
+      setSettings(built);
+    }, 'Horários salvos! Já valem na agenda dos clientes.');
   };
 
   const addBlock = (e: React.FormEvent) => {
     e.preventDefault();
     if (blkMode === 'range' && blkFrom >= blkTo) return notify('O horário final precisa ser depois do inicial.');
-    const nb: BlockedSlot = {
-      id: `blk-${Date.now()}`,
-      dateStr: blkDate,
-      timeStr: blkMode === 'day' ? undefined : blkFrom,
-      endTimeStr: blkMode === 'day' ? undefined : blkTo,
-      reason: blkReason.trim() || (blkMode === 'day' ? 'Folga' : 'Bloqueio'),
-    };
-    const next = [nb, ...blocked];
-    setBlocked(next);
-    saveBlockedSlots(next);
-    setBlkReason('');
-    notify(blkMode === 'day' ? 'Dia bloqueado.' : `Horários de ${blkFrom} às ${blkTo} bloqueados.`);
-    changed();
+    run(
+      async () => {
+        await adminAddBlock({
+          dateStr: blkDate,
+          timeStr: blkMode === 'day' ? undefined : blkFrom,
+          endTimeStr: blkMode === 'day' ? undefined : blkTo,
+          reason: blkReason.trim() || (blkMode === 'day' ? 'Folga' : 'Bloqueio'),
+        });
+        await refreshLists();
+        setBlkReason('');
+      },
+      blkMode === 'day' ? 'Dia bloqueado.' : `Horários de ${blkFrom} às ${blkTo} bloqueados.`
+    );
   };
 
-  const removeBlock = (id: string) => {
-    const next = blocked.filter((b) => b.id !== id);
-    setBlocked(next);
-    saveBlockedSlots(next);
-    notify('Bloqueio removido — horários liberados.');
-    changed();
-  };
+  const removeBlock = (id: string) =>
+    run(async () => {
+      await adminRemoveBlock(id);
+      await refreshLists();
+    }, 'Bloqueio removido — horários liberados.');
 
   const applyPreset = (p: 'day' | 'morning' | 'afternoon' | 'evening') => {
     const day = getDaySchedule(blkDate, settings) || { start: defStart, end: defEnd };
@@ -315,24 +398,21 @@ const AdminShell: React.FC<{ onClose: () => void; onLogout: () => void; onDataCh
     const price = parseFloat(draft.price.replace(',', '.'));
     if (!draft.name.trim() || isNaN(price)) return notify('Informe o nome e o preço do serviço.');
     const data = { name: draft.name.trim(), price, durationMinutes: parseInt(draft.duration, 10) || 30, category: draft.category, description: draft.description.trim() || undefined };
-    const next = editingId
-      ? services.map((s) => (s.id === editingId ? { ...s, ...data } : s))
-      : [...services, { id: `svc-${Date.now()}`, ...data }];
-    setServices(next);
-    saveServices(next);
-    notify(editingId ? 'Serviço atualizado.' : `Serviço "${data.name}" cadastrado.`);
-    resetDraft();
-    changed();
+    run(
+      async () => {
+        await adminSaveService({ id: editingId || undefined, ...data });
+        await reloadAll();
+        resetDraft();
+      },
+      editingId ? 'Serviço atualizado.' : `Serviço "${data.name}" cadastrado.`
+    );
   };
 
-  const deleteService = (id: string) => {
-    if (services.length <= 1) return notify('Mantenha pelo menos um serviço cadastrado.');
-    const next = services.filter((s) => s.id !== id);
-    setServices(next);
-    saveServices(next);
-    notify('Serviço removido.');
-    changed();
-  };
+  const deleteService = (id: string) =>
+    run(async () => {
+      await adminDeleteService(id);
+      await reloadAll();
+    }, 'Serviço removido.');
 
   /* ----- clientes / resumo ----- */
   const clients = useMemo(() => {
@@ -417,8 +497,10 @@ const AdminShell: React.FC<{ onClose: () => void; onLogout: () => void; onDataCh
       {/* Conteúdo (rola sozinho) */}
       <main id="admin-main" className="flex-1 min-h-0 overflow-y-auto overscroll-contain">
         <div className="max-w-5xl mx-auto px-4 sm:px-8 py-6 sm:py-10 pb-28 md:pb-12">
+          {loading && <div role="status" className="py-32 text-center text-sm text-white/45">Carregando agenda…</div>}
+
           {/* ───────── AGENDA ───────── */}
-          {tab === 'agenda' && (
+          {!loading && tab === 'agenda' && (
             <section>
               <PageHead
                 title="Agenda"
@@ -526,7 +608,7 @@ const AdminShell: React.FC<{ onClose: () => void; onLogout: () => void; onDataCh
           )}
 
           {/* ───────── HORÁRIOS ───────── */}
-          {tab === 'horarios' && (
+          {!loading && tab === 'horarios' && (
             <section className="space-y-6">
               <PageHead title="Horários" subtitle="Defina o expediente, folgas e horários reduzidos por dia da semana." />
 
@@ -625,7 +707,7 @@ const AdminShell: React.FC<{ onClose: () => void; onLogout: () => void; onDataCh
           )}
 
           {/* ───────── SERVIÇOS ───────── */}
-          {tab === 'servicos' && (
+          {!loading && tab === 'servicos' && (
             <section className="space-y-6">
               <PageHead title="Serviços" subtitle="O que aparece na agenda dos clientes, com preço e duração." />
               <form onSubmit={submitService} className={`${card} p-5 sm:p-6 space-y-4`}>
@@ -673,7 +755,7 @@ const AdminShell: React.FC<{ onClose: () => void; onLogout: () => void; onDataCh
           )}
 
           {/* ───────── CLIENTES ───────── */}
-          {tab === 'clientes' && (
+          {!loading && tab === 'clientes' && (
             <section>
               <PageHead title="Clientes" subtitle={`${clients.length} cliente(s) cadastrados pelos agendamentos`} />
               <div className="relative mb-5">
@@ -705,7 +787,7 @@ const AdminShell: React.FC<{ onClose: () => void; onLogout: () => void; onDataCh
           )}
 
           {/* ───────── RESUMO ───────── */}
-          {tab === 'resumo' && (
+          {!loading && tab === 'resumo' && (
             <section className="space-y-6">
               <PageHead title="Resumo" subtitle={`Desempenho de ${parseDate(todayStr()).toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' })}`} />
               <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
@@ -793,7 +875,9 @@ const SecurityModal: React.FC<{ onClose: () => void }> = ({ onClose }) => {
         <button onClick={onClose} className="absolute top-3 right-3 p-2 text-white/50 hover:text-white cursor-pointer" aria-label="Fechar"><X className="w-5 h-5" /></button>
         <h3 className="font-serif text-2xl">Segurança</h3>
 
-        {mode === 'local' ? (
+        {dataMode === 'supabase' ? (
+          <SupabasePasswordForm />
+        ) : mode === 'local' ? (
           <form onSubmit={submit} className="mt-5 space-y-3">
             <label className={lbl} htmlFor="cp">Senha atual</label>
             <input id="cp" type="password" value={cur} onChange={(e) => setCur(e.target.value)} className={inp} autoComplete="current-password" />
@@ -806,7 +890,7 @@ const SecurityModal: React.FC<{ onClose: () => void }> = ({ onClose }) => {
           <p className="mt-4 text-sm text-white/55 leading-relaxed">A senha deste site é definida no deploy (variável <code className="text-white">VITE_ADMIN_PASSWORD_HASH</code>) e vale em todos os aparelhos.</p>
         )}
 
-        {mode === 'local' && hash && (
+        {dataMode === 'local' && mode === 'local' && hash && (
           <div className="mt-6 pt-5 border-t border-white/[0.08]">
             <p className={lbl}>Usar a mesma senha em todos os aparelhos</p>
             <p className="text-xs text-white/45 leading-relaxed mb-3">Copie o código abaixo e cadastre na Vercel como variável <code className="text-white/80">VITE_ADMIN_PASSWORD_HASH</code>. Depois publique de novo.</p>
@@ -818,5 +902,39 @@ const SecurityModal: React.FC<{ onClose: () => void }> = ({ onClose }) => {
         )}
       </div>
     </div>
+  );
+};
+
+const SupabasePasswordForm: React.FC = () => {
+  const [pw, setPw] = useState('');
+  const [pw2, setPw2] = useState('');
+  const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
+  const [busy, setBusy] = useState(false);
+
+  const submit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (pw !== pw2) return setMsg({ ok: false, text: 'As senhas não conferem.' });
+    setBusy(true);
+    try {
+      await adminChangePassword(pw);
+      setMsg({ ok: true, text: 'Senha alterada com sucesso.' });
+      setPw('');
+      setPw2('');
+    } catch (err) {
+      setMsg({ ok: false, text: (err as Error).message });
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <form onSubmit={submit} className="mt-5 space-y-3">
+      <label className={lbl} htmlFor="sp1">Nova senha (mín. 8 caracteres)</label>
+      <input id="sp1" type="password" value={pw} onChange={(e) => setPw(e.target.value)} className={inp} autoComplete="new-password" />
+      <label className={lbl} htmlFor="sp2">Repita a nova senha</label>
+      <input id="sp2" type="password" value={pw2} onChange={(e) => setPw2(e.target.value)} className={inp} autoComplete="new-password" />
+      {msg && <p className={`text-sm px-3 py-2 border ${msg.ok ? 'text-emerald-300 border-emerald-400/25 bg-emerald-400/10' : 'text-rose-300 border-rose-400/25 bg-rose-400/10'}`}>{msg.text}</p>}
+      <button type="submit" disabled={!pw || !pw2 || busy} className={btnSolid + ' w-full'}>{busy ? 'Salvando…' : 'Alterar senha'}</button>
+    </form>
   );
 };
