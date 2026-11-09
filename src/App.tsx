@@ -9,7 +9,7 @@ import { IntroSplash } from './components/IntroSplash';
 import { MagneticButton } from './components/MagneticButton';
 import { DoubtsSection } from './components/DoubtsSection';
 import { Service, BarberSettings, DEFAULT_BARBER_SETTINGS } from './utils/bookingLogic';
-import { getStoredServices, getStoredBarberSettings } from './utils/storage';
+import { loadPublicData } from './data/api';
 import { SITE, MAPS_LINK, MAPS_EMBED, whatsappLink } from './utils/siteConfig';
 import { ArrowRight, ArrowUpRight } from 'lucide-react';
 
@@ -83,9 +83,19 @@ export default function App() {
   const rootRef = useRef<HTMLDivElement>(null);
   const heroTl = useRef<gsap.core.Timeline | null>(null);
 
+  // serviços e horário de funcionamento vêm do banco (ou do modo local, se o Supabase não estiver configurado)
   useEffect(() => {
-    setServices(getStoredServices());
-    setSettings(getStoredBarberSettings());
+    let alive = true;
+    loadPublicData()
+      .then((d) => {
+        if (!alive) return;
+        setServices(d.services);
+        setSettings(d.settings);
+      })
+      .catch(() => undefined);
+    return () => {
+      alive = false;
+    };
   }, [refreshKey]);
 
   /* ======================= ANIMAÇÕES (GSAP) ======================= */
@@ -268,7 +278,7 @@ export default function App() {
   const hoursLabel = `${openDays ? openDays + ' · ' : ''}${formatTime(settings.workStart)} às ${formatTime(settings.workEnd)}`;
 
   const footerLink =
-    'text-neutral-300 hover:text-white text-xs sm:text-sm tracking-wide transition-colors text-left cursor-pointer';
+    'text-neutral-300 hover:text-white text-base sm:text-sm tracking-wide transition-colors text-left cursor-pointer py-1';
 
   return (
     <div ref={rootRef} id="top" className="min-h-screen bg-[#0e0e0e] text-white">
@@ -284,12 +294,12 @@ export default function App() {
         <h1 className="sr">PURAZI Studio — {SITE.tagline} Barbearia em Valença/RJ</h1>
 
         {/* ============ 1. HERO: foto + slogan num único fundo de concreto ============ */}
-        <section data-hero className="relative bg-concrete overflow-hidden pt-[4.5rem] sm:pt-24">
+        <section data-hero className="relative bg-concrete overflow-hidden pt-20 sm:pt-24 min-h-[94svh] sm:min-h-0">
           {/* sombra leve no topo: garante leitura da barra transparente */}
-          <div className="absolute inset-x-0 top-0 h-36 bg-gradient-to-b from-black/30 to-transparent pointer-events-none z-10" />
+          <div className="absolute inset-x-0 top-0 h-44 sm:h-36 bg-gradient-to-b from-black/50 sm:from-black/30 to-transparent pointer-events-none z-10" />
 
-          <div className="relative max-w-[1366px] mx-auto grid grid-cols-[46%_1fr] items-start">
-            <div data-hero-photo-wrap className="self-end">
+          <div className="relative max-w-[1366px] mx-auto grid grid-cols-1 sm:grid-cols-[46%_1fr] items-start min-h-[calc(94svh-5rem)] sm:min-h-0 content-between">
+            <div data-hero-photo-wrap className="self-end order-2 sm:order-1 w-[94%] sm:w-auto">
               <img
                 data-hero-photo
                 src="/assets/barber-photo-clean.webp"
@@ -301,15 +311,15 @@ export default function App() {
               />
             </div>
 
-            <div data-hero-text className="text-right pr-[7%] pt-[6%] sm:pt-[8%] pb-10">
-              <p className="font-display font-extrabold text-black tracking-tight leading-[1.16] text-[clamp(1.2rem,3.9vw,3.4rem)] ml-auto max-w-[11.2em]">
+            <div data-hero-text className="order-1 sm:order-2 text-right pr-6 pt-6 pb-2 sm:pr-[7%] sm:pt-[8%] sm:pb-10">
+              <p className="font-display font-extrabold text-black tracking-tight leading-[1.16] text-[clamp(2rem,8.6vw,3.4rem)] sm:text-[clamp(1.2rem,3.9vw,3.4rem)] ml-auto max-w-[11.2em]">
                 <SplitWords text="Aqui, cada detalhe valoriza sua melhor versão." attr="data-hero-word" />
               </p>
               <img
                 data-hero-logo
                 src="/assets/logo-purazi-black.png"
                 alt="PURAZI Studio"
-                className="ml-auto mt-[9%] w-[clamp(92px,17vw,230px)] h-auto"
+                className="ml-auto mt-6 w-[clamp(124px,36vw,230px)] sm:mt-[9%] sm:w-[clamp(92px,17vw,230px)] h-auto"
               />
             </div>
           </div>
@@ -339,7 +349,7 @@ export default function App() {
           <div className="light-beam" />
           <div className="light-beam b2" />
 
-          <div className="relative max-w-[1366px] mx-auto grid grid-cols-[clamp(66px,13vw,190px)_1fr]">
+          <div className="relative max-w-[1366px] mx-auto grid grid-cols-[clamp(78px,13vw,190px)_1fr]">
             {/* PURAZI vertical: letras distribuídas do início ao fim das 3 seções */}
             <aside
               className="flex flex-col items-stretch justify-between pl-[14%] pr-[4%] py-[clamp(4.5rem,9vw,8rem)] self-stretch"
@@ -359,18 +369,18 @@ export default function App() {
 
             <div className="min-w-0 pr-5 sm:pr-10 lg:pr-20 pl-3 sm:pl-6">
               {/* ---------- Agenda ---------- */}
-              <section className="relative flex flex-col items-center justify-center text-center py-16 sm:py-24">
+              <section className="relative flex flex-col items-center justify-center text-center min-h-[84svh] sm:min-h-0 py-16 sm:py-24">
                 <div
                   className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-[min(90%,760px)] aspect-[2/1] pointer-events-none"
                   style={{ background: 'radial-gradient(closest-side, rgba(255,255,255,0.06), transparent)' }}
                 />
                 <h2
                   data-split
-                  className="relative font-serif font-light text-[clamp(1.9rem,5vw,4rem)] leading-[1.12]"
+                  className="relative font-serif font-light text-[2.45rem] sm:text-[clamp(1.9rem,5vw,4rem)] leading-[1.1]"
                 >
                   <SplitWords text="Agende seu horário abaixo:" attr="data-word" />
                 </h2>
-                <p data-reveal="up" data-delay="0.15" className="relative mt-4 max-w-md text-[clamp(0.75rem,1.3vw,0.95rem)] text-neutral-400">
+                <p data-reveal="up" data-delay="0.15" className="relative mt-5 max-w-[20rem] sm:max-w-md text-base sm:text-[clamp(0.75rem,1.3vw,0.95rem)] leading-relaxed text-neutral-400">
                   Rápido, prático e sem intermediários. Escolha o serviço e confirme em 1 minuto.
                 </p>
                 <div data-reveal="up" data-delay="0.3" className="relative mt-12">
@@ -386,35 +396,35 @@ export default function App() {
               </section>
 
               {/* ---------- Máquina ---------- */}
-              <section data-clipper-wrap className="relative -my-4 sm:-my-10">
+              <section data-clipper-wrap className="relative my-2 overflow-hidden sm:overflow-visible sm:-my-10">
                 <img
                   data-clipper
                   src="/assets/clipper-clean.webp"
                   alt="Máquina de corte profissional"
                   loading="lazy"
-                  className="fade-edges w-full h-auto"
+                  className="fade-edges w-[132%] max-w-none -ml-[16%] sm:w-full sm:max-w-full sm:ml-0 h-auto"
                 />
               </section>
 
               {/* ---------- Localização ---------- */}
               <section id="secao-localizacao" className="relative py-14 sm:py-24 grid lg:grid-cols-[1.05fr_1fr] gap-12 lg:gap-14 items-center">
                 <div className="min-w-0">
-                  <p data-reveal="up" className="shiny-text text-[11px] uppercase tracking-[0.4em] font-semibold">
+                  <p data-reveal="up" className="shiny-text text-xs sm:text-[11px] uppercase tracking-[0.4em] font-semibold">
                     Localização
                   </p>
 
-                  <div className="mt-6 flex items-center gap-4 sm:gap-6">
-                    <div data-pin className="relative shrink-0 w-[clamp(44px,6vw,84px)]">
+                  <div className="mt-6 flex flex-col items-start gap-5 sm:flex-row sm:items-center sm:gap-6">
+                    <div data-pin className="relative shrink-0 w-16 sm:w-[clamp(44px,6vw,84px)]">
                       <LocationPin className="w-full h-auto" />
                       <span className="absolute left-1/2 -bottom-1 -translate-x-1/2 w-7 h-2 rounded-full bg-red-500/40 animate-ping" />
                     </div>
-                    <p data-reveal="left" data-delay="0.2" className="font-serif font-light leading-[1.2] text-[clamp(1.35rem,2.55vw,2.35rem)]">
-                      <span className="block whitespace-nowrap">Avenida Nilo Peçanha,</span>
-                      <span className="block whitespace-nowrap">1027 - Valença/RJ</span>
+                    <p data-reveal="left" data-delay="0.2" className="font-serif font-light leading-[1.2] text-[2rem] sm:text-[clamp(1.35rem,2.55vw,2.35rem)]">
+                      <span className="block sm:whitespace-nowrap">Avenida Nilo Peçanha,</span>
+                      <span className="block sm:whitespace-nowrap">1027 - Valença/RJ</span>
                     </p>
                   </div>
 
-                  <p data-reveal="up" data-delay="0.25" className="mt-8 text-[11px] sm:text-xs uppercase tracking-[0.22em] text-neutral-500">
+                  <p data-reveal="up" data-delay="0.25" className="mt-8 text-[13px] sm:text-xs uppercase tracking-[0.22em] text-neutral-400 sm:text-neutral-500">
                     {hoursLabel}
                   </p>
 
@@ -424,7 +434,7 @@ export default function App() {
                     href={MAPS_LINK}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="group mt-6 inline-flex items-center gap-2 text-xs uppercase tracking-[0.22em] text-white border-b border-white/30 hover:border-white pb-1 transition-colors"
+                    className="group mt-6 inline-flex items-center gap-2 text-sm sm:text-xs uppercase tracking-[0.22em] text-white border-b border-white/30 hover:border-white py-2 sm:pb-1 sm:pt-0 transition-colors"
                   >
                     Como chegar
                     <ArrowUpRight className="w-4 h-4 transition-transform duration-300 group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
@@ -432,7 +442,7 @@ export default function App() {
                 </div>
 
                 {/* mini mapa integrado */}
-                <div data-map onMouseMove={spotMove} className="spot beam relative h-[300px] sm:h-[380px] border border-white/10 bg-[#111113] overflow-hidden">
+                <div data-map onMouseMove={spotMove} className="spot beam relative h-[380px] sm:h-[380px] border border-white/10 bg-[#111113] overflow-hidden">
                   <iframe
                     title="Mapa do PURAZI Studio"
                     src={MAPS_EMBED}
@@ -448,7 +458,7 @@ export default function App() {
                       className="absolute inset-0 z-10 cursor-pointer"
                       aria-label="Ativar o mapa para interagir"
                     >
-                      <span className="absolute bottom-3 left-3 bg-black/70 backdrop-blur-sm px-3 py-2 text-[10px] uppercase tracking-[0.2em] text-white/80">
+                      <span className="absolute bottom-3 left-3 bg-black/70 backdrop-blur-sm px-3 py-2.5 text-[11px] sm:text-[10px] uppercase tracking-[0.2em] text-white/90">
                         Toque para explorar o mapa
                       </span>
                     </button>
@@ -467,15 +477,15 @@ export default function App() {
       <footer className="bg-[#0e0e0e] pt-12 sm:pt-16 pb-8 px-6 sm:px-10 lg:px-16 text-neutral-300">
         <div className="max-w-[1366px] mx-auto grid grid-cols-1 md:grid-cols-[1.4fr_1fr_1fr] gap-10 lg:gap-14">
           <div data-reveal="up">
-            <img src="/assets/logo-purazi-white.png" alt="PURAZI Studio" className="h-14 sm:h-[4.5rem] w-auto mb-6" />
-            <p className="text-xs sm:text-sm leading-relaxed max-w-sm mb-4">
+            <img src="/assets/logo-purazi-white.png" alt="PURAZI Studio" className="h-[4.5rem] sm:h-[4.5rem] w-auto mb-6" />
+            <p className="text-base sm:text-sm leading-relaxed max-w-sm mb-4">
               {SITE.tagline} Barbearia moderna com agendamento online inteligente, pontualidade e técnicas de visagismo sob medida.
             </p>
             <p className="font-serif text-sm text-neutral-400">Valença · Rio de Janeiro</p>
           </div>
 
           <div data-reveal="up" data-delay="0.1">
-            <h3 className="font-serif text-lg sm:text-xl font-semibold text-white mb-4">Acesso Rápido</h3>
+            <h3 className="font-serif text-2xl sm:text-xl font-semibold text-white mb-4">Acesso Rápido</h3>
             <nav className="flex flex-col gap-2.5">
               <button onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })} className={footerLink}>Início</button>
               <button onClick={() => handleOpenBookingWithService()} className={footerLink}>Agendar Horário</button>
@@ -486,8 +496,8 @@ export default function App() {
           </div>
 
           <div data-reveal="up" data-delay="0.2">
-            <h3 className="font-serif text-lg sm:text-xl font-semibold text-white mb-4">Contato e Gestão</h3>
-            <div className="flex flex-col gap-3 text-xs sm:text-sm">
+            <h3 className="font-serif text-2xl sm:text-xl font-semibold text-white mb-4">Contato e Gestão</h3>
+            <div className="flex flex-col gap-3 text-base sm:text-sm">
               <a href={MAPS_LINK} target="_blank" rel="noopener noreferrer" className="hover:text-white transition-colors">
                 {SITE.address} · {SITE.city}
               </a>
