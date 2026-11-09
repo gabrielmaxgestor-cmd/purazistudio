@@ -67,7 +67,7 @@ export const MagneticButton: React.FC<Props> = ({
 
   const isLight = variant === 'light';
   const base =
-    'group relative inline-flex items-center justify-center gap-3 overflow-hidden h-12 sm:h-14 px-7 sm:px-10 text-[11px] sm:text-xs uppercase tracking-[0.22em] font-semibold whitespace-nowrap cursor-pointer select-none';
+    'group relative inline-flex items-center justify-center gap-3 overflow-hidden h-16 sm:h-14 px-9 sm:px-10 text-[13px] sm:text-xs uppercase tracking-[0.22em] font-semibold whitespace-nowrap cursor-pointer select-none';
   const tone = isLight
     ? 'bg-white text-black animate-[glowPulse_3.2s_ease-in-out_infinite]'
     : 'beam border border-white/20 bg-black/40 backdrop-blur-sm text-white hover:text-black transition-colors duration-500';
