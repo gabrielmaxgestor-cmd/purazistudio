@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
-import { Eye, EyeOff, Lock, ShieldCheck, X, ArrowRight } from 'lucide-react';
+import { Eye, EyeOff, Lock, ShieldCheck, X, ArrowRight, Mail } from 'lucide-react';
 import { getAuthMode, login, setupPassword, lockRemainingMs } from '../utils/adminAuth';
+import { dataMode, adminSignIn, friendlyError } from '../data/api';
 
 interface Props {
   onSuccess: () => void;
@@ -8,7 +9,8 @@ interface Props {
 }
 
 /** Tela de acesso exclusiva do barbeiro (login ou criação da senha no primeiro acesso). */
-export const AdminLogin: React.FC<Props> = ({ onSuccess, onClose }) => {
+/** Login local (sem Supabase): senha criada no primeiro acesso, vale só neste aparelho. */
+const LocalLogin: React.FC<Props> = ({ onSuccess, onClose }) => {
   const mode = getAuthMode();
   const isSetup = mode === 'setup';
 
@@ -145,3 +147,91 @@ export const AdminLogin: React.FC<Props> = ({ onSuccess, onClose }) => {
     </div>
   );
 };
+
+/** Login do barbeiro com Supabase Auth (e-mail + senha). Só entra quem está na tabela "admins". */
+const SupabaseLogin: React.FC<Props> = ({ onSuccess, onClose }) => {
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [show, setShow] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && onClose();
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [onClose]);
+
+  const submit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError(null);
+    setBusy(true);
+    try {
+      await adminSignIn(email, password);
+      onSuccess();
+    } catch (err) {
+      setError(friendlyError(err));
+      setPassword('');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const inputCls =
+    'w-full h-12 bg-black/40 border border-white/10 focus:border-white/50 focus:bg-black/60 outline-none px-4 text-[15px] text-white placeholder:text-white/30 transition-colors';
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-[#0a0a0b]/95 backdrop-blur-md">
+      <div
+        className="absolute inset-0 pointer-events-none opacity-60"
+        style={{
+          backgroundImage: 'radial-gradient(rgba(255,255,255,0.09) 1px, transparent 1px)',
+          backgroundSize: '26px 26px',
+          WebkitMaskImage: 'radial-gradient(ellipse 60% 55% at 50% 45%, #000 20%, transparent 80%)',
+          maskImage: 'radial-gradient(ellipse 60% 55% at 50% 45%, #000 20%, transparent 80%)',
+        }}
+      />
+      <button onClick={onClose} className="absolute top-4 right-4 p-2 text-white/60 hover:text-white transition-colors cursor-pointer" aria-label="Fechar">
+        <X className="w-6 h-6" />
+      </button>
+
+      <form onSubmit={submit} className="relative w-full max-w-[400px] border border-white/10 bg-[#141417]/90 shadow-[0_30px_90px_-20px_rgba(0,0,0,0.9)] p-7 sm:p-9">
+        <div className="flex flex-col items-center text-center">
+          <img src="/assets/logo-purazi-white.png" alt="PURAZI Studio" className="h-10 w-auto mb-7" />
+          <div className="w-12 h-12 rounded-full border border-white/15 bg-white/5 flex items-center justify-center mb-4">
+            <Lock className="w-5 h-5 text-white" />
+          </div>
+          <h2 className="font-serif text-[1.7rem] leading-tight">Área do barbeiro</h2>
+          <p className="mt-2 text-[13px] text-white/50 leading-relaxed">Acesso restrito. Entre com o seu e-mail e senha.</p>
+        </div>
+
+        <div className="mt-7 space-y-3">
+          <div className="relative">
+            <Mail className="w-4 h-4 absolute left-4 top-1/2 -translate-y-1/2 text-white/35" />
+            <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="E-mail" className={inputCls + ' pl-11'} autoComplete="username" autoFocus />
+          </div>
+          <div className="relative">
+            <input type={show ? 'text' : 'password'} value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Senha" className={inputCls + ' pr-12'} autoComplete="current-password" />
+            <button type="button" onClick={() => setShow((v) => !v)} className="absolute right-0 top-0 h-12 w-12 flex items-center justify-center text-white/50 hover:text-white cursor-pointer" aria-label={show ? 'Ocultar senha' : 'Mostrar senha'}>
+              {show ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+            </button>
+          </div>
+        </div>
+
+        {error && (
+          <p role="alert" className="mt-4 text-[13px] text-rose-300 bg-rose-500/10 border border-rose-400/20 px-3 py-2.5">
+            {error}
+          </p>
+        )}
+
+        <button type="submit" disabled={busy || !email || !password} className="group mt-6 w-full h-12 bg-white text-black hover:bg-neutral-200 disabled:bg-white/15 disabled:text-white/35 disabled:cursor-not-allowed text-xs uppercase tracking-[0.22em] font-bold inline-flex items-center justify-center gap-2 transition-colors cursor-pointer">
+          {busy ? 'Verificando…' : 'Entrar'}
+          {!busy && <ArrowRight className="w-4 h-4 transition-transform group-hover:translate-x-1" />}
+        </button>
+      </form>
+    </div>
+  );
+};
+
+export const AdminLogin: React.FC<Props> = (props) =>
+  dataMode === 'supabase' ? <SupabaseLogin {...props} /> : <LocalLogin {...props} />;
