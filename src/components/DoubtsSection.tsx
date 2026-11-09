@@ -85,21 +85,21 @@ export const DoubtsSection: React.FC = () => {
       <div className="absolute inset-x-0 top-0 h-40 sm:h-56 bg-gradient-to-b from-[#1d1c21] to-transparent pointer-events-none" />
       <div className="absolute inset-x-0 bottom-0 h-40 sm:h-56 bg-gradient-to-t from-[#0e0e0e] to-transparent pointer-events-none" />
 
-      <div className="relative z-10 min-h-[680px] sm:min-h-[760px] flex flex-col items-center justify-center text-center px-6 py-28">
-        <p data-reveal="up" className="text-[11px] uppercase tracking-[0.45em] text-white/60">
+      <div className="relative z-10 min-h-[92svh] sm:min-h-[760px] flex flex-col items-center justify-center text-center px-6 py-28">
+        <p data-reveal="up" className="text-xs sm:text-[11px] uppercase tracking-[0.45em] text-white/70">
           Dúvidas
         </p>
         <h2
           data-reveal="up"
           data-delay="0.1"
-          className="mt-6 font-['Cormorant_Garamond',serif] font-normal text-[clamp(2.6rem,6.4vw,5.4rem)] leading-[1.04] max-w-[12em]"
+          className="mt-6 font-['Cormorant_Garamond',serif] font-normal text-[clamp(3rem,6.4vw,5.4rem)] leading-[1.04] max-w-[12em]"
         >
           Ficou com alguma dúvida?
         </h2>
         <p
           data-reveal="up"
           data-delay="0.2"
-          className="mt-7 max-w-md text-[15px] leading-relaxed text-white/60"
+          className="mt-7 max-w-[22rem] sm:max-w-md text-[17px] sm:text-[15px] leading-relaxed text-white/70 sm:text-white/60"
         >
           Fale direto com o barbeiro pelo WhatsApp. Respondemos sobre cortes, horários e serviços.
         </p>
