@@ -6,10 +6,10 @@ import {
 import { SITE } from '../utils/siteConfig';
 import {
   Service, Appointment, BlockedSlot, DayOption, BarberSettings, DEFAULT_BARBER_SETTINGS,
-  generateHoursForSchedule, getDaySchedule, isSlotFreeForDuration, generateBookingCode, isValidPhone,
+  generateHoursForSchedule, getDaySchedule, isSlotFreeForDuration, isValidPhone,
   formatWhatsAppBookingMessage, todayStr,
 } from '../utils/bookingLogic';
-import { saveAppointment, getStoredBlockedSlots, getStoredAppointments, getStoredBarberSettings } from '../utils/storage';
+import { loadPublicData, createAppointment, friendlyError } from '../data/api';
 
 interface BookingDrawerProps {
   isOpen: boolean;
@@ -66,15 +66,36 @@ export const BookingDrawer: React.FC<BookingDrawerProps> = ({
   const [clientPhone, setClientPhone] = useState('');
   const [formError, setFormError] = useState<string | null>(null);
   const [confirmed, setConfirmed] = useState<Appointment | null>(null);
+  const [serviceList, setServiceList] = useState<Service[]>(services);
+  const [loading, setLoading] = useState(false);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [submitting, setSubmitting] = useState(false);
 
   const bodyRef = useRef<HTMLDivElement>(null);
+
+  // Busca horários ocupados/bloqueados e serviços direto do banco (sem dados pessoais de ninguém)
+  const refreshData = async () => {
+    try {
+      const d = await loadPublicData();
+      setSettings(d.settings);
+      setAppointments(d.busy);
+      setBlocked(d.blocked);
+      setServiceList(d.services);
+      setLoadError(null);
+    } catch (e) {
+      setLoadError(friendlyError(e));
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => setServiceList(services), [services]);
 
   // Ao abrir: carrega dados atuais e começa um agendamento novo
   useEffect(() => {
     if (!isOpen) return;
-    setSettings(getStoredBarberSettings());
-    setAppointments(getStoredAppointments());
-    setBlocked(getStoredBlockedSlots());
+    setLoading(true);
+    refreshData();
     setConfirmed(null);
     setFormError(null);
     setClientName('');
@@ -204,40 +225,39 @@ export const BookingDrawer: React.FC<BookingDrawerProps> = ({
     setClientPhone(c);
   };
 
-  const confirm = (e: React.FormEvent) => {
+  const confirm = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (submitting) return;
     if (!clientName.trim()) return setFormError('Informe seu nome.');
     if (!isValidPhone(clientPhone)) return setFormError('Informe um WhatsApp válido com DDD (ex.: 24 99999-9999).');
     if (!selectedService || !selectedDate || !selectedTime) return setFormError('Dados do agendamento incompletos.');
 
-    const freshApts = getStoredAppointments();
-    const freshBlocks = getStoredBlockedSlots();
-    if (!isSlotFreeForDuration(selectedDate, selectedTime, selectedService.durationMinutes, freshApts, freshBlocks, settings)) {
-      setAppointments(freshApts);
-      setBlocked(freshBlocks);
-      setSelectedTime(null);
-      setStep(2);
-      return setFormError('Esse horário acabou de ser ocupado. Escolha outro horário.');
+    setSubmitting(true);
+    setFormError(null);
+    try {
+      const apt = await createAppointment({
+        serviceId: selectedService.id,
+        dateStr: selectedDate,
+        timeStr: selectedTime,
+        name: clientName.trim(),
+        phone: clientPhone,
+      });
+      setConfirmed(apt);
+      setStep(4);
+      onBookingComplete?.(apt);
+    } catch (err) {
+      const code = (err as { code?: string }).code;
+      setFormError(friendlyError(err));
+      // horário perdido para outra pessoa (ou regra mudou): atualiza a agenda e volta para escolher outro
+      if (code && ['slot_taken', 'blocked', 'past_time', 'outside_hours', 'day_off', 'invalid_time'].includes(code)) {
+        setSelectedTime(null);
+        setStep(2);
+        setLoading(true);
+        await refreshData();
+      }
+    } finally {
+      setSubmitting(false);
     }
-
-    const apt: Appointment = {
-      id: `apt-${Date.now()}`,
-      code: generateBookingCode(),
-      clientName: clientName.trim(),
-      clientPhone: clientPhone.replace(/\D/g, ''),
-      serviceId: selectedService.id,
-      serviceName: selectedService.name,
-      price: selectedService.price,
-      durationMinutes: selectedService.durationMinutes,
-      dateStr: selectedDate,
-      timeStr: selectedTime,
-      status: 'confirmed',
-      createdAt: new Date().toISOString(),
-    };
-    saveAppointment(apt);
-    setConfirmed(apt);
-    setStep(4);
-    onBookingComplete?.(apt);
   };
 
   const downloadIcs = () => {
@@ -323,10 +343,10 @@ export const BookingDrawer: React.FC<BookingDrawerProps> = ({
             {/* ───── 1 · Serviço ───── */}
             {step === 1 && (
               <div>
-                <h2 className="font-serif text-[2rem] leading-[1.1]">Qual serviço você quer?</h2>
+                <h2 className="font-serif text-[2.3rem] sm:text-[2rem] leading-[1.1]">Qual serviço você quer?</h2>
                 <p className="mt-2 text-sm text-white/50">Toque em um serviço para selecioná-lo.</p>
                 <div className="mt-6 space-y-3" role="radiogroup" aria-label="Serviços">
-                  {services.map((s) => {
+                  {serviceList.map((s) => {
                     const on = selectedService?.id === s.id;
                     return (
                       <button
@@ -345,10 +365,10 @@ export const BookingDrawer: React.FC<BookingDrawerProps> = ({
                         </span>
                         <span className="relative z-10 flex-1 min-w-0">
                           <span className="flex items-center gap-2 flex-wrap">
-                            <span className="font-semibold text-[15px] leading-snug">{s.name}</span>
+                            <span className="font-semibold text-base leading-snug">{s.name}</span>
                             {s.category === 'combo' && <span className="text-[9px] uppercase tracking-[0.16em] font-bold bg-white text-black px-1.5 py-0.5">Mais pedido</span>}
                           </span>
-                          {s.description && <span className="block mt-1 text-[13px] leading-relaxed text-white/50 line-clamp-2">{s.description}</span>}
+                          {s.description && <span className="block mt-1 text-sm leading-relaxed text-white/55 line-clamp-2">{s.description}</span>}
                           <span className="mt-2 inline-flex items-center gap-1.5 text-xs text-white/45"><Clock className="w-3.5 h-3.5" />{s.durationMinutes} min</span>
                         </span>
                         <span className="relative z-10 font-serif text-2xl shrink-0">{brl(s.price)}</span>
@@ -361,8 +381,8 @@ export const BookingDrawer: React.FC<BookingDrawerProps> = ({
 
             {/* ───── 2 · Data e hora ───── */}
             {step === 2 && (
-              <div>
-                <h2 className="font-serif text-[2rem] leading-[1.1]">Escolha o dia e o horário</h2>
+              <div className={loading ? 'opacity-50 pointer-events-none transition-opacity' : 'transition-opacity'}>
+                <h2 className="font-serif text-[2.3rem] sm:text-[2rem] leading-[1.1]">Escolha o dia e o horário</h2>
 
                 <button onClick={findNextFree} type="button" className="group mt-5 w-full flex items-center justify-between gap-3 border border-white/15 hover:border-white/45 bg-white/[0.03] px-4 h-12 text-sm cursor-pointer transition-colors">
                   <span className="flex items-center gap-2.5"><Zap className="w-4 h-4" />Primeiro horário livre</span>
@@ -389,7 +409,7 @@ export const BookingDrawer: React.FC<BookingDrawerProps> = ({
                           onClick={() => { setSelectedDate(c.dateStr); setSelectedTime(null); setFormError(null); }}
                           aria-label={`${longDate(c.dateStr)}${c.state === 'off' ? ', folga' : c.state === 'full' ? ', sem horários' : ''}`}
                           aria-pressed={selectedDate === c.dateStr}
-                          className={`relative aspect-square flex flex-col items-center justify-center text-sm transition-all ${
+                          className={`relative aspect-square flex flex-col items-center justify-center text-base sm:text-sm transition-all ${
                             selectedDate === c.dateStr
                               ? 'bg-white text-black font-bold scale-105'
                               : c.state === 'ok'
@@ -433,7 +453,7 @@ export const BookingDrawer: React.FC<BookingDrawerProps> = ({
                                 onClick={() => { setSelectedTime(s.time); setFormError(null); }}
                                 aria-pressed={selectedTime === s.time}
                                 style={{ animationDelay: `${i * 30}ms` }}
-                                className={`slot-in h-12 text-sm font-mono tabular-nums border transition-all ${
+                                className={`slot-in h-14 sm:h-12 text-base sm:text-sm font-mono tabular-nums border transition-all ${
                                   selectedTime === s.time
                                     ? 'bg-white text-black border-white font-bold scale-[1.03]'
                                     : s.ok
@@ -457,7 +477,7 @@ export const BookingDrawer: React.FC<BookingDrawerProps> = ({
             {/* ───── 3 · Dados ───── */}
             {step === 3 && selectedService && selectedDate && selectedTime && (
               <div>
-                <h2 className="font-serif text-[2rem] leading-[1.1]">Quase lá!</h2>
+                <h2 className="font-serif text-[2.3rem] sm:text-[2rem] leading-[1.1]">Quase lá!</h2>
                 <p className="mt-2 text-sm text-white/50">Confira o resumo e informe seus dados.</p>
 
                 <div className="mt-6 border border-white/12 divide-y divide-white/[0.08] bg-white/[0.025]">
@@ -546,9 +566,9 @@ export const BookingDrawer: React.FC<BookingDrawerProps> = ({
         {/* Rodapé fixo com resumo e ação principal */}
         {step < 4 && (
           <footer className="shrink-0 border-t border-white/[0.1] bg-[#121216] px-5 sm:px-7 pt-4 pb-[max(1rem,env(safe-area-inset-bottom,0px))]">
-            {formError && (
+            {(formError || loadError) && (
               <p role="alert" className="mb-3 flex items-start gap-2 text-[13px] text-rose-300 bg-rose-500/10 border border-rose-400/20 px-3 py-2.5">
-                <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />{formError}
+                <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />{formError || loadError}
               </p>
             )}
             <div className="flex items-center gap-4">
@@ -576,8 +596,8 @@ export const BookingDrawer: React.FC<BookingDrawerProps> = ({
                   Continuar <ChevronRight className="w-4 h-4" />
                 </button>
               ) : (
-                <button key="btn-confirm" type="submit" form="booking-form" className="h-14 px-7 inline-flex items-center gap-2 bg-white text-black hover:bg-neutral-200 text-xs uppercase tracking-[0.18em] font-bold transition-colors cursor-pointer">
-                  <Check className="w-4 h-4" /> Confirmar
+                <button key="btn-confirm" type="submit" form="booking-form" disabled={submitting} className="h-14 px-7 inline-flex items-center gap-2 bg-white text-black hover:bg-neutral-200 disabled:opacity-60 disabled:cursor-wait text-xs uppercase tracking-[0.18em] font-bold transition-colors cursor-pointer">
+                  <Check className="w-4 h-4" /> {submitting ? 'Confirmando…' : 'Confirmar'}
                 </button>
               )}
             </div>
