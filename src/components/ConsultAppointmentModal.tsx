@@ -13,18 +13,20 @@ import {
 import {
   Appointment,
   canRescheduleOrCancel,
-  isTimeSlotAvailable,
+  isSlotFreeForDuration,
   generateNext90Days,
   generateHoursForSchedule,
   DayOption,
+  DEFAULT_BARBER_SETTINGS,
 } from '../utils/bookingLogic';
 import {
-  getStoredAppointments,
-  saveAppointment,
-  updateAppointmentStatus,
-  getStoredBlockedSlots,
-  getStoredBarberSettings,
-} from '../utils/storage';
+  PublicData,
+  loadPublicData,
+  lookupAppointment,
+  cancelAppointment,
+  rescheduleAppointment,
+  friendlyError,
+} from '../data/api';
 
 interface ConsultAppointmentModalProps {
   isOpen: boolean;
@@ -48,110 +50,90 @@ export const ConsultAppointmentModal: React.FC<ConsultAppointmentModalProps> = (
   const [rescheduleDay, setRescheduleDay] = useState<DayOption | null>(null);
   const [rescheduleTime, setRescheduleTime] = useState<string | null>(null);
 
-  const settings = getStoredBarberSettings();
+  const [pub, setPub] = useState<PublicData | null>(null);
+  const [working, setWorking] = useState(false);
+
+  const settings = pub?.settings || DEFAULT_BARBER_SETTINGS;
   const rescheduleDays = generateNext90Days(new Date(), settings);
-  const hours = generateHoursForSchedule(settings);
+
+  // ocupações de outras pessoas (o próprio horário atual do cliente não conta como ocupado)
+  const othersBusy = (() => {
+    const list = pub?.busy ?? [];
+    if (!foundAppointment) return list;
+    const i = list.findIndex(
+      (b) => b.dateStr === foundAppointment.dateStr && b.timeStr === foundAppointment.timeStr && b.durationMinutes === foundAppointment.durationMinutes
+    );
+    return i < 0 ? list : list.filter((_, k) => k !== i);
+  })();
 
   if (!isOpen) return null;
 
-  const handleSearch = (e: React.FormEvent) => {
+  const handleSearch = async (e: React.FormEvent) => {
     e.preventDefault();
     setActionMessage(null);
     setIsRescheduling(false);
     setSearchAttempted(true);
 
-    const appointments = getStoredAppointments();
-    const cleanPhone = queryPhone.replace(/\D/g, '');
-    const cleanCode = queryCode.trim().toUpperCase();
-
-    const match = appointments.find((a) => {
-      if (cleanCode && cleanPhone) {
-        return a.code === cleanCode && a.clientPhone === cleanPhone;
-      }
-      if (cleanCode) {
-        return a.code === cleanCode;
-      }
-      if (cleanPhone) {
-        return a.clientPhone === cleanPhone;
-      }
-      return false;
-    });
-
-    setFoundAppointment(match || null);
+    if (!queryCode.trim() || queryPhone.replace(/\D/g, '').length < 10) {
+      setFoundAppointment(null);
+      setActionMessage({ type: 'error', text: 'Informe o código do agendamento e o WhatsApp usado na reserva (com DDD).' });
+      return;
+    }
+    setWorking(true);
+    try {
+      setFoundAppointment(await lookupAppointment(queryCode, queryPhone));
+    } catch (err) {
+      setFoundAppointment(null);
+      setActionMessage({ type: 'error', text: friendlyError(err) });
+    } finally {
+      setWorking(false);
+    }
   };
 
-  const handleCancelAppointment = () => {
+  const handleCancelAppointment = async () => {
     if (!foundAppointment) return;
 
-    // Enforce 12-hour minimum notice
-    const check = canRescheduleOrCancel(
-      foundAppointment.dateStr,
-      foundAppointment.timeStr,
-      new Date(),
-      12
-    );
-
+    // Regra de 12h (o banco também confere — esta checagem só evita um clique desnecessário)
+    const check = canRescheduleOrCancel(foundAppointment.dateStr, foundAppointment.timeStr, new Date(), 12);
     if (!check.allowed) {
-      setActionMessage({
-        type: 'error',
-        text: check.reason || 'Cancelamentos devem ser feitos com no mínimo 12 horas de antecedência.',
-      });
+      setActionMessage({ type: 'error', text: check.reason || 'Cancelamentos devem ser feitos com no mínimo 12 horas de antecedência.' });
       return;
     }
 
     if (window.confirm('Tem certeza que deseja cancelar este agendamento?')) {
-      const updated = updateAppointmentStatus(foundAppointment.id, 'cancelled');
-      const refreshed = updated.find((a) => a.id === foundAppointment.id);
-      setFoundAppointment(refreshed || null);
-      setActionMessage({
-        type: 'success',
-        text: 'Agendamento cancelado com sucesso. O horário foi liberado na agenda.',
-      });
-      if (onAppointmentsUpdated) onAppointmentsUpdated();
+      setWorking(true);
+      try {
+        const updated = await cancelAppointment(foundAppointment.code, foundAppointment.clientPhone);
+        setFoundAppointment(updated);
+        setActionMessage({ type: 'success', text: 'Agendamento cancelado com sucesso. O horário foi liberado na agenda.' });
+        if (onAppointmentsUpdated) onAppointmentsUpdated();
+      } catch (err) {
+        setActionMessage({ type: 'error', text: friendlyError(err) });
+      } finally {
+        setWorking(false);
+      }
     }
   };
 
-  const handleConfirmReschedule = () => {
+  const handleConfirmReschedule = async () => {
     if (!foundAppointment || !rescheduleDay || !rescheduleTime) {
-      setActionMessage({
-        type: 'error',
-        text: 'Por favor, selecione a nova data e horário desejado.',
-      });
+      setActionMessage({ type: 'error', text: 'Por favor, selecione a nova data e horário desejado.' });
       return;
     }
-
-    // Verify availability
-    const available = isTimeSlotAvailable(
-      rescheduleDay.dateStr,
-      rescheduleTime,
-      getStoredAppointments(),
-      getStoredBlockedSlots(),
-      settings
-    );
-
-    if (!available) {
-      setActionMessage({
-        type: 'error',
-        text: 'Este horário acabou de ser ocupado. Por favor, escolha outro.',
-      });
-      return;
+    setWorking(true);
+    try {
+      const updated = await rescheduleAppointment(foundAppointment.code, foundAppointment.clientPhone, rescheduleDay.dateStr, rescheduleTime);
+      setFoundAppointment(updated);
+      setIsRescheduling(false);
+      setActionMessage({ type: 'success', text: `Agendamento remarcado com sucesso para ${rescheduleDay.fullLabel} às ${rescheduleTime}!` });
+      if (onAppointmentsUpdated) onAppointmentsUpdated();
+    } catch (err) {
+      setActionMessage({ type: 'error', text: friendlyError(err) });
+      // atualiza a lista de horários ocupados
+      loadPublicData().then(setPub).catch(() => undefined);
+    } finally {
+      setWorking(false);
     }
-
-    const updatedAppointment: Appointment = {
-      ...foundAppointment,
-      dateStr: rescheduleDay.dateStr,
-      timeStr: rescheduleTime,
-      status: 'confirmed',
-    };
-
-    saveAppointment(updatedAppointment);
-    setFoundAppointment(updatedAppointment);
-    setIsRescheduling(false);
-    setActionMessage({
-      type: 'success',
-      text: `Agendamento remarcado com sucesso para ${rescheduleDay.fullLabel} às ${rescheduleTime}!`,
-    });
-    if (onAppointmentsUpdated) onAppointmentsUpdated();
   };
 
   const canModify = foundAppointment
@@ -195,7 +177,7 @@ export const ConsultAppointmentModal: React.FC<ConsultAppointmentModalProps> = (
             Consultar Meu Agendamento
           </h2>
           <p className="text-xs text-neutral-400 mt-1 font-sans">
-            Informe seu WhatsApp ou código (ex: PRZ-4921) para visualizar, remarcar ou cancelar até 12 horas antes.
+            Informe o código do agendamento (ex.: PRZ-4921) e o WhatsApp usado na reserva para visualizar, remarcar ou cancelar até 12 horas antes.
           </p>
         </div>
 
@@ -236,7 +218,7 @@ export const ConsultAppointmentModal: React.FC<ConsultAppointmentModalProps> = (
             className="w-full bg-white text-black hover:bg-neutral-200 py-3 text-xs uppercase tracking-[0.2em] font-bold transition-colors flex items-center justify-center gap-2 rounded-none cursor-pointer"
           >
             <Search className="w-4 h-4" />
-            <span>Localizar Agendamento</span>
+            <span>{working && !isRescheduling ? 'Buscando…' : 'Localizar Agendamento'}</span>
           </button>
         </form>
 
@@ -294,7 +276,7 @@ export const ConsultAppointmentModal: React.FC<ConsultAppointmentModalProps> = (
               </div>
               <div>
                 <span className="text-neutral-500 block text-[11px]">Data &amp; Horário</span>
-                <span className="font-bold text-amber-200">{foundAppointment.dateStr} às {foundAppointment.timeStr}</span>
+                <span className="font-bold text-amber-200">{foundAppointment.dateStr.split('-').reverse().join('/')} às {foundAppointment.timeStr}</span>
               </div>
               <div>
                 <span className="text-neutral-500 block text-[11px]">Valor</span>
@@ -308,7 +290,11 @@ export const ConsultAppointmentModal: React.FC<ConsultAppointmentModalProps> = (
                 {canModify ? (
                   <>
                     <button
-                      onClick={() => setIsRescheduling(!isRescheduling)}
+                      onClick={() => {
+                        const next = !isRescheduling;
+                        setIsRescheduling(next);
+                        if (next) loadPublicData().then(setPub).catch((err) => setActionMessage({ type: 'error', text: friendlyError(err) }));
+                      }}
                       className="flex-1 bg-neutral-800 hover:bg-neutral-700 text-white py-2.5 px-3 text-xs uppercase tracking-wider font-semibold transition-colors flex items-center justify-center gap-1.5 cursor-pointer"
                     >
                       <RefreshCw className="w-3.5 h-3.5 text-amber-200" />
@@ -373,12 +359,13 @@ export const ConsultAppointmentModal: React.FC<ConsultAppointmentModalProps> = (
                       Horários para {rescheduleDay.fullLabel}:
                     </span>
                     <div className="grid grid-cols-4 gap-2">
-                      {hours.map((hour) => {
-                        const available = isTimeSlotAvailable(
+                      {generateHoursForSchedule(settings, rescheduleDay.dateStr).map((hour) => {
+                        const available = isSlotFreeForDuration(
                           rescheduleDay.dateStr,
                           hour,
-                          getStoredAppointments(),
-                          getStoredBlockedSlots(),
+                          foundAppointment.durationMinutes,
+                          othersBusy,
+                          pub?.blocked ?? [],
                           settings
                         );
                         const isSelected = rescheduleTime === hour;
@@ -414,7 +401,7 @@ export const ConsultAppointmentModal: React.FC<ConsultAppointmentModalProps> = (
 
                 <button
                   onClick={handleConfirmReschedule}
-                  disabled={!rescheduleDay || !rescheduleTime}
+                  disabled={!rescheduleDay || !rescheduleTime || working}
                   className={`w-full py-2.5 text-xs uppercase tracking-wider font-bold transition-all ${
                     rescheduleDay && rescheduleTime
                       ? 'bg-amber-400 text-black hover:bg-amber-300 cursor-pointer shadow-md'
