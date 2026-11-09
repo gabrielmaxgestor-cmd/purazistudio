@@ -85,13 +85,18 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenBooking, onOpenConsult, on
             : 'bg-transparent border-transparent'
         }`}
       >
-        <div className="max-w-[1366px] mx-auto h-[4.5rem] sm:h-24 px-6 sm:px-10 flex items-center justify-between gap-6">
+        {/* no celular: sombra atrás da barra enquanto está transparente, para logo e menu nunca sumirem no cinza */}
+        <div
+          aria-hidden="true"
+          className={`absolute inset-x-0 top-0 h-[150%] bg-gradient-to-b from-black/60 via-black/30 to-transparent pointer-events-none transition-opacity duration-500 md:hidden ${isScrolled ? 'opacity-0' : 'opacity-100'}`}
+        />
+        <div className="relative max-w-[1366px] mx-auto h-20 sm:h-24 px-5 sm:px-10 flex items-center justify-between gap-4 sm:gap-6">
           {/* Logo maior, sempre fixa à esquerda */}
           <a href="#top" className="flex items-center shrink-0 cursor-pointer" aria-label="PURAZI Studio — início">
             <img
               src="/assets/logo-purazi-white.png"
               alt="PURAZI Studio"
-              className="h-10 sm:h-[3.4rem] w-auto object-contain drop-shadow-[0_1px_10px_rgba(0,0,0,0.25)]"
+              className="h-12 sm:h-[3.4rem] w-auto object-contain drop-shadow-[0_2px_10px_rgba(0,0,0,0.45)] sm:drop-shadow-[0_1px_10px_rgba(0,0,0,0.25)]"
             />
           </a>
 
@@ -105,17 +110,17 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenBooking, onOpenConsult, on
 
             <button
               onClick={onOpenBooking}
-              className="beam inline-flex items-center justify-center h-10 sm:h-11 px-5 sm:px-8 bg-black text-white border border-white/15 hover:bg-white hover:text-black hover:border-white text-[11px] sm:text-xs tracking-[0.22em] uppercase font-bold transition-colors duration-300 cursor-pointer"
+              className="beam inline-flex items-center justify-center h-12 sm:h-11 px-6 sm:px-8 bg-black text-white border border-white/25 hover:bg-white hover:text-black hover:border-white text-[13px] sm:text-xs tracking-[0.22em] uppercase font-bold transition-colors duration-300 cursor-pointer"
             >
               Agendar
             </button>
 
             <button
               onClick={() => setMobileMenuOpen(true)}
-              className="md:hidden h-10 w-10 -mr-2 inline-flex items-center justify-center text-white hover:text-neutral-300 transition-colors cursor-pointer"
+              className="md:hidden h-12 w-12 -mr-2 inline-flex items-center justify-center text-white drop-shadow-[0_2px_8px_rgba(0,0,0,0.5)] hover:text-neutral-300 transition-colors cursor-pointer"
               aria-label="Abrir menu de navegação"
             >
-              <Menu className="w-7 h-7" />
+              <Menu className="w-9 h-9" strokeWidth={2.2} />
             </button>
           </div>
         </div>
@@ -130,13 +135,13 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenBooking, onOpenConsult, on
           aria-label="Menu principal"
         >
           <div className="flex items-center justify-between h-[4.5rem] shrink-0">
-            <img src="/assets/logo-purazi-white.png" alt="PURAZI Studio" className="h-10 w-auto object-contain" />
+            <img src="/assets/logo-purazi-white.png" alt="PURAZI Studio" className="h-12 w-auto object-contain" />
             <button
               onClick={() => setMobileMenuOpen(false)}
               className="text-white/70 hover:text-white p-2 -mr-2 transition-colors cursor-pointer"
               aria-label="Fechar menu"
             >
-              <X className="w-8 h-8" />
+              <X className="w-9 h-9" />
             </button>
           </div>
 
