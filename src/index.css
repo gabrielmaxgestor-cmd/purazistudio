@@ -82,6 +82,28 @@ body {
   background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='220' height='220'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 1  0 0 0 0 1  0 0 0 0 1  0 0 0 0.9 0'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>");
 }
 
+/* Recorte oval: a foto se dissolve em todas as bordas, sem aparecer como um "quadrado" */
+.fade-oval {
+  -webkit-mask-image: radial-gradient(ellipse 50% 42% at 50% 62%, #000 52%, transparent 100%);
+  mask-image: radial-gradient(ellipse 50% 42% at 50% 62%, #000 52%, transparent 100%);
+}
+
+/* Feixe de luz que atravessa a foto da máquina de tempos em tempos */
+.light-sweep {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  mix-blend-mode: screen;
+  background: linear-gradient(105deg, transparent 38%, rgba(255, 255, 255, 0.32) 50%, transparent 62%);
+  background-size: 250% 100%;
+  background-position: 150% 0;
+  animation: lightSweep 6s ease-in-out infinite;
+}
+@keyframes lightSweep {
+  0% { background-position: 150% 0; }
+  55%, 100% { background-position: -60% 0; }
+}
+
 /* Itens do menu mobile entram em cascata */
 @keyframes menuIn {
   from { opacity: 0; transform: translateY(18px); }
@@ -167,7 +189,7 @@ body {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .beam::after, .shiny-text, .light-beam { animation: none; }
+  .beam::after, .shiny-text, .light-beam, .light-sweep { animation: none; }
 }
 
 /* Spotlight: brilho que segue o mouse dentro de cartões (inspirado em Spotlight Card / 21st.dev) */
