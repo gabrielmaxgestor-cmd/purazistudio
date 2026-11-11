@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useLayoutEffect, useRef } from 'react';
+import React, { useState, useEffect, useLayoutEffect, useMemo, useRef } from 'react';
 import gsap from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
 import { BookingDrawer } from './components/BookingDrawer';
@@ -8,7 +8,11 @@ import { Navbar } from './components/Navbar';
 import { IntroSplash } from './components/IntroSplash';
 import { MagneticButton } from './components/MagneticButton';
 import { DoubtsSection } from './components/DoubtsSection';
-import { Service, BarberSettings, DEFAULT_BARBER_SETTINGS } from './utils/bookingLogic';
+import { GhostMarquee } from './components/GhostMarquee';
+import {
+  Service, BarberSettings, DEFAULT_BARBER_SETTINGS, DayOption, Appointment, BlockedSlot,
+  generateNext90Days, generateHoursForSchedule, isSlotFreeForDuration, todayStr,
+} from './utils/bookingLogic';
 import { loadPublicData } from './data/api';
 import { SITE, MAPS_LINK, MAPS_EMBED, whatsappLink } from './utils/siteConfig';
 import { ArrowRight, ArrowUpRight } from 'lucide-react';
@@ -79,6 +83,8 @@ export default function App() {
   const [services, setServices] = useState<Service[]>([]);
   const [settings, setSettings] = useState<BarberSettings>(DEFAULT_BARBER_SETTINGS);
   const [refreshKey, setRefreshKey] = useState(0);
+  const [avail, setAvail] = useState<{ busy: Appointment[]; blocked: BlockedSlot[] }>({ busy: [], blocked: [] });
+  const [quick, setQuick] = useState<{ day: DayOption; time: string } | null>(null);
 
   const rootRef = useRef<HTMLDivElement>(null);
   const heroTl = useRef<gsap.core.Timeline | null>(null);
@@ -91,6 +97,7 @@ export default function App() {
         if (!alive) return;
         setServices(d.services);
         setSettings(d.settings);
+        setAvail({ busy: d.busy, blocked: d.blocked });
       })
       .catch(() => undefined);
     return () => {
@@ -261,8 +268,47 @@ export default function App() {
 
   const handleOpenBookingWithService = (serviceId?: string) => {
     setSelectedServiceId(serviceId || null);
+    setQuick(null);
     setBookingOpen(true);
   };
+
+  // atalho: toque em um horário livre já abre a agenda no último passo
+  const handleOpenBookingAt = (slot: { day: DayOption; time: string }) => {
+    setSelectedServiceId(services[0]?.id || null);
+    setQuick(slot);
+    setBookingOpen(true);
+  };
+
+  // próximos horários livres (um por dia, para dar variedade) — calculados com os dados reais da agenda
+  const nextSlots = useMemo(() => {
+    const svc = services[0];
+    if (!svc) return [];
+    const today = todayStr();
+    const tmr = new Date();
+    tmr.setDate(tmr.getDate() + 1);
+    const tomorrow = todayStr(tmr);
+    const out: { day: DayOption; time: string; label: string }[] = [];
+    for (const day of generateNext90Days(new Date(), settings)) {
+      if (day.isOffDay) continue;
+      const time = generateHoursForSchedule(settings, day.dateStr).find((h) =>
+        isSlotFreeForDuration(day.dateStr, h, svc.durationMinutes, avail.busy, avail.blocked, settings)
+      );
+      if (time) {
+        out.push({
+          day,
+          time,
+          label: day.dateStr === today ? 'Hoje' : day.dateStr === tomorrow ? 'Amanhã' : `${day.dayName}, ${day.dayNumber} ${day.monthName}`,
+        });
+      }
+      if (out.length >= 4) break;
+    }
+    return out;
+  }, [services, settings, avail]);
+
+  // os horários aparecem depois que os dados chegam: recalcula as posições das animações de rolagem
+  useEffect(() => {
+    ScrollTrigger.refresh();
+  }, [nextSlots.length]);
 
   const handleDataChanged = () => setRefreshKey((prev) => prev + 1);
 
@@ -369,7 +415,7 @@ export default function App() {
 
             <div className="min-w-0 pr-5 sm:pr-10 lg:pr-20 pl-3 sm:pl-6">
               {/* ---------- Agenda ---------- */}
-              <section className="relative flex flex-col items-center justify-center text-center min-h-[84svh] sm:min-h-0 py-16 sm:py-24">
+              <section className="relative flex flex-col items-center justify-center text-center py-14 sm:py-24">
                 <div
                   className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-[min(90%,760px)] aspect-[2/1] pointer-events-none"
                   style={{ background: 'radial-gradient(closest-side, rgba(255,255,255,0.06), transparent)' }}
@@ -393,17 +439,58 @@ export default function App() {
                     <ArrowRight className="w-4 h-4 transition-transform duration-500 group-hover:translate-x-1" />
                   </MagneticButton>
                 </div>
+
+                {nextSlots.length > 0 && (
+                  <div data-reveal="up" data-delay="0.1" className="relative mt-12 w-full max-w-[26rem]">
+                    <p className="shiny-text text-xs sm:text-[11px] uppercase tracking-[0.35em] font-semibold">Próximos horários livres</p>
+                    <div className="mt-5 grid grid-cols-2 gap-3">
+                      {nextSlots.map((slot) => (
+                        <button
+                          key={slot.day.dateStr}
+                          type="button"
+                          onClick={() => handleOpenBookingAt(slot)}
+                          onMouseMove={spotMove}
+                          aria-label={`Agendar ${slot.label} às ${slot.time}`}
+                          className="spot h-[4.25rem] border border-white/15 hover:border-white/55 bg-white/[0.02] flex flex-col items-center justify-center gap-0.5 cursor-pointer transition-colors"
+                        >
+                          <span className="relative z-10 text-[11px] uppercase tracking-[0.2em] text-white/55">{slot.label}</span>
+                          <span className="relative z-10 font-mono text-lg tabular-nums">{slot.time}</span>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </section>
 
               {/* ---------- Máquina ---------- */}
-              <section data-clipper-wrap className="relative my-2 overflow-hidden sm:overflow-visible sm:-my-10">
-                <img
-                  data-clipper
-                  src="/assets/clipper-clean.webp"
-                  alt="Máquina de corte profissional"
-                  loading="lazy"
-                  className="fade-edges w-[132%] max-w-none -ml-[16%] sm:w-full sm:max-w-full sm:ml-0 h-auto"
-                />
+              <section data-clipper-wrap className="relative py-8 sm:py-10">
+                {/* texto fantasma em movimento atrás da foto (acelera ao rolar) */}
+                <div className="absolute inset-0 flex flex-col justify-between py-3 pointer-events-none" aria-hidden="true">
+                  <GhostMarquee
+                    text="Precisão · Estilo · Detalhe ·"
+                    direction={1}
+                    duration={48}
+                    className="font-serif uppercase tracking-[0.12em] text-[clamp(2.4rem,10vw,5.5rem)] leading-none text-transparent [-webkit-text-stroke:1px_rgba(255,255,255,0.22)]"
+                  />
+                  <GhostMarquee
+                    text="Corte · Barba · Visagismo ·"
+                    direction={-1}
+                    duration={56}
+                    className="font-serif uppercase tracking-[0.12em] text-[clamp(2.4rem,10vw,5.5rem)] leading-none text-transparent [-webkit-text-stroke:1px_rgba(255,255,255,0.22)]"
+                  />
+                </div>
+
+                {/* foto dissolvida em oval (sem "quadrado") + feixe de luz passando */}
+                <div className="relative scale-[1.3] sm:scale-100 my-3 sm:my-0">
+                  <img
+                    data-clipper
+                    src="/assets/clipper-clean.webp"
+                    alt="Máquina de corte profissional"
+                    loading="lazy"
+                    className="fade-oval mix-blend-lighten w-full h-auto"
+                  />
+                  <div className="light-sweep fade-oval" aria-hidden="true" />
+                </div>
               </section>
 
               {/* ---------- Localização ---------- */}
@@ -522,8 +609,8 @@ export default function App() {
         onClose={() => setBookingOpen(false)}
         services={services}
         preselectedServiceId={selectedServiceId}
-        initialDay={null}
-        initialTime={null}
+        initialDay={quick?.day ?? null}
+        initialTime={quick?.time ?? null}
         onBookingComplete={handleDataChanged}
       />
 
