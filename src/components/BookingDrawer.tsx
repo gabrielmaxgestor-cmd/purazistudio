@@ -114,7 +114,7 @@ export const BookingDrawer: React.FC<BookingDrawerProps> = ({
       const t = new Date();
       setViewMonth({ y: t.getFullYear(), m: t.getMonth() });
     }
-    setStep(found && !(initialDay && initialTime) ? 2 : 1);
+    setStep(found ? (initialDay && initialTime ? 3 : 2) : 1);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen]);
 
