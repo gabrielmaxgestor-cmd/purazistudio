@@ -88,6 +88,33 @@ body {
   mask-image: radial-gradient(ellipse 50% 42% at 50% 62%, #000 52%, transparent 100%);
 }
 
+/* Dissolve o topo e a base de uma mídia (mistura com o fundo escuro, sem "cortes" visíveis).
+   No computador, onde a mídia fica dentro da coluna, as laterais também se dissolvem. */
+.fade-y {
+  -webkit-mask-image: linear-gradient(to bottom, transparent 0%, #000 16%, #000 80%, transparent 100%);
+  mask-image: linear-gradient(to bottom, transparent 0%, #000 16%, #000 80%, transparent 100%);
+}
+@media (min-width: 640px) {
+  .fade-y {
+    -webkit-mask-image:
+      linear-gradient(to right, transparent 0%, #000 14%, #000 86%, transparent 100%),
+      linear-gradient(to bottom, transparent 0%, #000 16%, #000 80%, transparent 100%);
+    -webkit-mask-composite: source-in;
+    mask-image:
+      linear-gradient(to right, transparent 0%, #000 14%, #000 86%, transparent 100%),
+      linear-gradient(to bottom, transparent 0%, #000 16%, #000 80%, transparent 100%);
+    mask-composite: intersect;
+  }
+}
+
+/* No celular, certas seções vazam para as bordas da tela (ignorando a coluna das letras do PURAZI) */
+@media (max-width: 639px) {
+  .bleed-mobile {
+    margin-left: calc(-1 * (clamp(78px, 13vw, 190px) + 0.75rem));
+    margin-right: -1.25rem;
+  }
+}
+
 /* Feixe de luz que atravessa a foto da máquina de tempos em tempos */
 .light-sweep {
   position: absolute;
