@@ -8,7 +8,7 @@ import { Navbar } from './components/Navbar';
 import { IntroSplash } from './components/IntroSplash';
 import { MagneticButton } from './components/MagneticButton';
 import { DoubtsSection } from './components/DoubtsSection';
-import { MachineShowcase, MachineVariant } from './components/MachineShowcase';
+import { CutsShowcase } from './components/CutsShowcase';
 import {
   Service, BarberSettings, DEFAULT_BARBER_SETTINGS, DayOption, Appointment, BlockedSlot,
   generateNext90Days, generateHoursForSchedule, isSlotFreeForDuration, todayStr,
@@ -85,20 +85,6 @@ export default function App() {
   const [refreshKey, setRefreshKey] = useState(0);
   const [avail, setAvail] = useState<{ busy: Appointment[]; blocked: BlockedSlot[] }>({ busy: [], blocked: [] });
   const [quick, setQuick] = useState<{ day: DayOption; time: string } | null>(null);
-
-  // PRÉ-VISUALIZAÇÃO: abra o site com  ?maquina=a  |  ?maquina=b  |  ?maquina=c  para testar cada opção
-  const [machineVariant, setMachineVariant] = useState<MachineVariant>(() => {
-    const v = new URLSearchParams(window.location.search).get('maquina');
-    return v === 'b' || v === 'c' ? v : 'a';
-  });
-  const showSwitcher = new URLSearchParams(window.location.search).has('maquina');
-  const pickVariant = (v: MachineVariant) => {
-    setMachineVariant(v);
-    const url = new URL(window.location.href);
-    url.searchParams.set('maquina', v);
-    history.replaceState(null, '', url.toString());
-    window.setTimeout(() => ScrollTrigger.refresh(), 300);
-  };
 
   const rootRef = useRef<HTMLDivElement>(null);
   const heroTl = useRef<gsap.core.Timeline | null>(null);
@@ -468,7 +454,7 @@ export default function App() {
               </section>
 
               {/* ---------- Máquina ---------- */}
-              <MachineShowcase variant={machineVariant} />
+              <CutsShowcase />
 
               {/* ---------- Localização ---------- */}
               <section id="secao-localizacao" className="relative py-14 sm:py-24 grid lg:grid-cols-[1.05fr_1fr] gap-12 lg:gap-14 items-center">
@@ -580,22 +566,6 @@ export default function App() {
           <span>Valença · RJ · Barbearia &amp; Visagismo</span>
         </div>
       </footer>
-
-      {showSwitcher && (
-        <div className="fixed bottom-[max(1rem,env(safe-area-inset-bottom,0px))] left-1/2 -translate-x-1/2 z-[60] flex items-center gap-1 p-1 bg-black/85 backdrop-blur-md border border-white/20 shadow-2xl">
-          <span className="px-3 text-[10px] uppercase tracking-[0.2em] text-white/50">Opção</span>
-          {(['a', 'b', 'c'] as const).map((v) => (
-            <button
-              key={v}
-              onClick={() => pickVariant(v)}
-              className={`h-11 w-11 text-sm font-bold uppercase transition-colors cursor-pointer ${machineVariant === v ? 'bg-white text-black' : 'text-white/70 hover:text-white'}`}
-              aria-pressed={machineVariant === v}
-            >
-              {v}
-            </button>
-          ))}
-        </div>
-      )}
 
       <BookingDrawer
         isOpen={bookingOpen}
