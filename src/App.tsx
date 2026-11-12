@@ -8,7 +8,7 @@ import { Navbar } from './components/Navbar';
 import { IntroSplash } from './components/IntroSplash';
 import { MagneticButton } from './components/MagneticButton';
 import { DoubtsSection } from './components/DoubtsSection';
-import { GhostMarquee } from './components/GhostMarquee';
+import { MachineShowcase, MachineVariant } from './components/MachineShowcase';
 import {
   Service, BarberSettings, DEFAULT_BARBER_SETTINGS, DayOption, Appointment, BlockedSlot,
   generateNext90Days, generateHoursForSchedule, isSlotFreeForDuration, todayStr,
@@ -85,6 +85,20 @@ export default function App() {
   const [refreshKey, setRefreshKey] = useState(0);
   const [avail, setAvail] = useState<{ busy: Appointment[]; blocked: BlockedSlot[] }>({ busy: [], blocked: [] });
   const [quick, setQuick] = useState<{ day: DayOption; time: string } | null>(null);
+
+  // PRÉ-VISUALIZAÇÃO: abra o site com  ?maquina=a  |  ?maquina=b  |  ?maquina=c  para testar cada opção
+  const [machineVariant, setMachineVariant] = useState<MachineVariant>(() => {
+    const v = new URLSearchParams(window.location.search).get('maquina');
+    return v === 'b' || v === 'c' ? v : 'a';
+  });
+  const showSwitcher = new URLSearchParams(window.location.search).has('maquina');
+  const pickVariant = (v: MachineVariant) => {
+    setMachineVariant(v);
+    const url = new URL(window.location.href);
+    url.searchParams.set('maquina', v);
+    history.replaceState(null, '', url.toString());
+    window.setTimeout(() => ScrollTrigger.refresh(), 300);
+  };
 
   const rootRef = useRef<HTMLDivElement>(null);
   const heroTl = useRef<gsap.core.Timeline | null>(null);
@@ -172,25 +186,6 @@ export default function App() {
           ease: 'power3.out',
           scrollTrigger: { trigger: el, start: 'top 88%', once: true },
         });
-      });
-
-      // ---- Foto da máquina: a "luz acende" e ela sobe em parallax ----
-      gsap.fromTo(
-        '[data-clipper]',
-        { opacity: 0, scale: 1.14, filter: 'brightness(0.2)' },
-        {
-          opacity: 1,
-          scale: 1,
-          filter: 'brightness(1)',
-          duration: 2,
-          ease: 'power2.out',
-          scrollTrigger: { trigger: '[data-clipper-wrap]', start: 'top 80%', once: true },
-        }
-      );
-      gsap.to('[data-clipper]', {
-        yPercent: -7,
-        ease: 'none',
-        scrollTrigger: { trigger: '[data-clipper-wrap]', start: 'top bottom', end: 'bottom top', scrub: true },
       });
 
       // ---- Localização: pin cai com quique e o mapa abre em "cortina" ----
@@ -305,10 +300,20 @@ export default function App() {
     return out;
   }, [services, settings, avail]);
 
-  // os horários aparecem depois que os dados chegam: recalcula as posições das animações de rolagem
+  // sempre que a altura da página mudar (horários que chegam do banco, fontes, imagens), as posições
+  // das animações de rolagem são recalculadas — evita legendas/efeitos "atrasados" em relação à rolagem
   useEffect(() => {
-    ScrollTrigger.refresh();
-  }, [nextSlots.length]);
+    let t: number | undefined;
+    const ro = new ResizeObserver(() => {
+      window.clearTimeout(t);
+      t = window.setTimeout(() => ScrollTrigger.refresh(), 150);
+    });
+    ro.observe(document.body);
+    return () => {
+      ro.disconnect();
+      window.clearTimeout(t);
+    };
+  }, []);
 
   const handleDataChanged = () => setRefreshKey((prev) => prev + 1);
 
@@ -377,7 +382,7 @@ export default function App() {
         {/* ===== 2. BLOCO ÚNICO: agenda + máquina + localização, com o PURAZI vertical contínuo ===== */}
         <div
           data-wrap
-          className="relative isolate bg-night grain overflow-hidden"
+          className="relative isolate bg-night grain overflow-x-clip"
           style={{ ['--mx' as string]: '50%', ['--my' as string]: '20%' }}
         >
           {/* luz que segue o cursor */}
@@ -398,7 +403,7 @@ export default function App() {
           <div className="relative max-w-[1366px] mx-auto grid grid-cols-[clamp(78px,13vw,190px)_1fr]">
             {/* PURAZI vertical: letras distribuídas do início ao fim das 3 seções */}
             <aside
-              className="flex flex-col items-stretch justify-between pl-[14%] pr-[4%] py-[clamp(4.5rem,9vw,8rem)] self-stretch"
+              className="relative z-10 flex flex-col items-stretch justify-between pl-[14%] pr-[4%] py-[clamp(4.5rem,9vw,8rem)] self-stretch"
               aria-hidden="true"
             >
               {LETTERS.map((l) => (
@@ -463,35 +468,7 @@ export default function App() {
               </section>
 
               {/* ---------- Máquina ---------- */}
-              <section data-clipper-wrap className="relative py-8 sm:py-10">
-                {/* texto fantasma em movimento atrás da foto (acelera ao rolar) */}
-                <div className="absolute inset-0 flex flex-col justify-between py-3 pointer-events-none" aria-hidden="true">
-                  <GhostMarquee
-                    text="Precisão · Estilo · Detalhe ·"
-                    direction={1}
-                    duration={48}
-                    className="font-serif uppercase tracking-[0.12em] text-[clamp(2.4rem,10vw,5.5rem)] leading-none text-transparent [-webkit-text-stroke:1px_rgba(255,255,255,0.22)]"
-                  />
-                  <GhostMarquee
-                    text="Corte · Barba · Visagismo ·"
-                    direction={-1}
-                    duration={56}
-                    className="font-serif uppercase tracking-[0.12em] text-[clamp(2.4rem,10vw,5.5rem)] leading-none text-transparent [-webkit-text-stroke:1px_rgba(255,255,255,0.22)]"
-                  />
-                </div>
-
-                {/* foto dissolvida em oval (sem "quadrado") + feixe de luz passando */}
-                <div className="relative scale-[1.3] sm:scale-100 my-3 sm:my-0">
-                  <img
-                    data-clipper
-                    src="/assets/clipper-clean.webp"
-                    alt="Máquina de corte profissional"
-                    loading="lazy"
-                    className="fade-oval mix-blend-lighten w-full h-auto"
-                  />
-                  <div className="light-sweep fade-oval" aria-hidden="true" />
-                </div>
-              </section>
+              <MachineShowcase variant={machineVariant} />
 
               {/* ---------- Localização ---------- */}
               <section id="secao-localizacao" className="relative py-14 sm:py-24 grid lg:grid-cols-[1.05fr_1fr] gap-12 lg:gap-14 items-center">
@@ -603,6 +580,22 @@ export default function App() {
           <span>Valença · RJ · Barbearia &amp; Visagismo</span>
         </div>
       </footer>
+
+      {showSwitcher && (
+        <div className="fixed bottom-[max(1rem,env(safe-area-inset-bottom,0px))] left-1/2 -translate-x-1/2 z-[60] flex items-center gap-1 p-1 bg-black/85 backdrop-blur-md border border-white/20 shadow-2xl">
+          <span className="px-3 text-[10px] uppercase tracking-[0.2em] text-white/50">Opção</span>
+          {(['a', 'b', 'c'] as const).map((v) => (
+            <button
+              key={v}
+              onClick={() => pickVariant(v)}
+              className={`h-11 w-11 text-sm font-bold uppercase transition-colors cursor-pointer ${machineVariant === v ? 'bg-white text-black' : 'text-white/70 hover:text-white'}`}
+              aria-pressed={machineVariant === v}
+            >
+              {v}
+            </button>
+          ))}
+        </div>
+      )}
 
       <BookingDrawer
         isOpen={bookingOpen}
