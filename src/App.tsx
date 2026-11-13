@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useLayoutEffect, useMemo, useRef } from 'react';
+import React, { useState, useEffect, useLayoutEffect, useRef } from 'react';
 import gsap from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
 import { BookingDrawer } from './components/BookingDrawer';
@@ -10,8 +10,7 @@ import { MagneticButton } from './components/MagneticButton';
 import { DoubtsSection } from './components/DoubtsSection';
 import { CutsShowcase } from './components/CutsShowcase';
 import {
-  Service, BarberSettings, DEFAULT_BARBER_SETTINGS, DayOption, Appointment, BlockedSlot,
-  generateNext90Days, generateHoursForSchedule, isSlotFreeForDuration, todayStr,
+  Service, BarberSettings, DEFAULT_BARBER_SETTINGS,
 } from './utils/bookingLogic';
 import { loadPublicData } from './data/api';
 import { SITE, MAPS_LINK, MAPS_EMBED, whatsappLink } from './utils/siteConfig';
@@ -83,8 +82,6 @@ export default function App() {
   const [services, setServices] = useState<Service[]>([]);
   const [settings, setSettings] = useState<BarberSettings>(DEFAULT_BARBER_SETTINGS);
   const [refreshKey, setRefreshKey] = useState(0);
-  const [avail, setAvail] = useState<{ busy: Appointment[]; blocked: BlockedSlot[] }>({ busy: [], blocked: [] });
-  const [quick, setQuick] = useState<{ day: DayOption; time: string } | null>(null);
 
   const rootRef = useRef<HTMLDivElement>(null);
   const heroTl = useRef<gsap.core.Timeline | null>(null);
@@ -97,7 +94,6 @@ export default function App() {
         if (!alive) return;
         setServices(d.services);
         setSettings(d.settings);
-        setAvail({ busy: d.busy, blocked: d.blocked });
       })
       .catch(() => undefined);
     return () => {
@@ -249,42 +245,8 @@ export default function App() {
 
   const handleOpenBookingWithService = (serviceId?: string) => {
     setSelectedServiceId(serviceId || null);
-    setQuick(null);
     setBookingOpen(true);
   };
-
-  // atalho: toque em um horário livre já abre a agenda no último passo
-  const handleOpenBookingAt = (slot: { day: DayOption; time: string }) => {
-    setSelectedServiceId(services[0]?.id || null);
-    setQuick(slot);
-    setBookingOpen(true);
-  };
-
-  // próximos horários livres (um por dia, para dar variedade) — calculados com os dados reais da agenda
-  const nextSlots = useMemo(() => {
-    const svc = services[0];
-    if (!svc) return [];
-    const today = todayStr();
-    const tmr = new Date();
-    tmr.setDate(tmr.getDate() + 1);
-    const tomorrow = todayStr(tmr);
-    const out: { day: DayOption; time: string; label: string }[] = [];
-    for (const day of generateNext90Days(new Date(), settings)) {
-      if (day.isOffDay) continue;
-      const time = generateHoursForSchedule(settings, day.dateStr).find((h) =>
-        isSlotFreeForDuration(day.dateStr, h, svc.durationMinutes, avail.busy, avail.blocked, settings)
-      );
-      if (time) {
-        out.push({
-          day,
-          time,
-          label: day.dateStr === today ? 'Hoje' : day.dateStr === tomorrow ? 'Amanhã' : `${day.dayName}, ${day.dayNumber} ${day.monthName}`,
-        });
-      }
-      if (out.length >= 4) break;
-    }
-    return out;
-  }, [services, settings, avail]);
 
   // sempre que a altura da página mudar (horários que chegam do banco, fontes, imagens), as posições
   // das animações de rolagem são recalculadas — evita legendas/efeitos "atrasados" em relação à rolagem
@@ -406,7 +368,7 @@ export default function App() {
 
             <div className="min-w-0 pr-5 sm:pr-10 lg:pr-20 pl-3 sm:pl-6">
               {/* ---------- Agenda ---------- */}
-              <section className="relative flex flex-col items-center justify-center text-center py-14 sm:py-24">
+              <section className="relative flex flex-col items-center justify-center text-center py-10 sm:py-14">
                 <div
                   className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-[min(90%,760px)] aspect-[2/1] pointer-events-none"
                   style={{ background: 'radial-gradient(closest-side, rgba(255,255,255,0.06), transparent)' }}
@@ -420,7 +382,7 @@ export default function App() {
                 <p data-reveal="up" data-delay="0.15" className="relative mt-5 max-w-[20rem] sm:max-w-md text-base sm:text-[clamp(0.75rem,1.3vw,0.95rem)] leading-relaxed text-neutral-400">
                   Rápido, prático e sem intermediários. Escolha o serviço e confirme em 1 minuto.
                 </p>
-                <div data-reveal="up" data-delay="0.3" className="relative mt-12">
+                <div data-reveal="up" data-delay="0.3" className="relative mt-9">
                   <MagneticButton
                     onClick={() => handleOpenBookingWithService()}
                     icon={null}
@@ -430,27 +392,6 @@ export default function App() {
                     <ArrowRight className="w-4 h-4 transition-transform duration-500 group-hover:translate-x-1" />
                   </MagneticButton>
                 </div>
-
-                {nextSlots.length > 0 && (
-                  <div data-reveal="up" data-delay="0.1" className="relative mt-12 w-full max-w-[26rem]">
-                    <p className="shiny-text text-xs sm:text-[11px] uppercase tracking-[0.35em] font-semibold">Próximos horários livres</p>
-                    <div className="mt-5 grid grid-cols-2 gap-3">
-                      {nextSlots.map((slot) => (
-                        <button
-                          key={slot.day.dateStr}
-                          type="button"
-                          onClick={() => handleOpenBookingAt(slot)}
-                          onMouseMove={spotMove}
-                          aria-label={`Agendar ${slot.label} às ${slot.time}`}
-                          className="spot h-[4.25rem] border border-white/15 hover:border-white/55 bg-white/[0.02] flex flex-col items-center justify-center gap-0.5 cursor-pointer transition-colors"
-                        >
-                          <span className="relative z-10 text-[11px] uppercase tracking-[0.2em] text-white/55">{slot.label}</span>
-                          <span className="relative z-10 font-mono text-lg tabular-nums">{slot.time}</span>
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                )}
               </section>
 
               {/* ---------- Máquina ---------- */}
@@ -572,8 +513,6 @@ export default function App() {
         onClose={() => setBookingOpen(false)}
         services={services}
         preselectedServiceId={selectedServiceId}
-        initialDay={quick?.day ?? null}
-        initialTime={quick?.time ?? null}
         onBookingComplete={handleDataChanged}
       />
 
