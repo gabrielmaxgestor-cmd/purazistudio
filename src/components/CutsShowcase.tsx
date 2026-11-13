@@ -20,12 +20,32 @@ const STEPS = [
  * Seção "cinematográfica": o palco fica fixo enquanto você rola e três cortes se sucedem,
  * cada um com sua palavra. Em cada etapa a foto avança devagar (push-in) e o fundo muda de tom.
  */
+const StaticCuts: React.FC = () => (
+  <div className="bleed-mobile relative py-12 px-6 sm:px-10 space-y-16">
+    {STEPS.map((s) => (
+      <div key={s.n} className="flex flex-col items-center text-center">
+        <div className="relative w-[min(66vw,300px)] aspect-[4/5]">
+          <div className="absolute -inset-2 translate-x-2.5 translate-y-2.5 border border-white/25" aria-hidden="true" />
+          <img src={s.photo} alt={s.alt} loading="lazy" className="relative w-full h-full object-cover grayscale contrast-110 border border-white/15" />
+        </div>
+        <p className="mt-10 text-xs uppercase tracking-[0.4em] text-white/60 font-semibold">{s.n}</p>
+        <h3 className="mt-3 font-serif font-light text-[3rem] leading-none">{s.title}</h3>
+        <p className="mt-4 max-w-[17rem] text-base text-white/70">{s.text}</p>
+      </div>
+    ))}
+  </div>
+);
+
 export const CutsShowcase: React.FC = () => {
+  if (reduced()) return <StaticCuts />;
+  return <AnimatedCuts />;
+};
+
+const AnimatedCuts: React.FC = () => {
   const root = useRef<HTMLDivElement>(null);
   const counter = useRef<HTMLSpanElement>(null);
 
   useLayoutEffect(() => {
-    if (reduced()) return;
     const ctx = gsap.context(() => {
       const tl = gsap.timeline({
         defaults: { ease: 'none' },
@@ -51,7 +71,7 @@ export const CutsShowcase: React.FC = () => {
         const tilt = s.tilt;
 
         // avanço lento da foto durante toda a etapa
-        tl.fromTo(img, { scale: 1 }, { scale: 1.14, duration: third }, start);
+        tl.fromTo(img, { scale: 1 }, { scale: 1.14, duration: third, immediateRender: false }, start);
 
         if (i > 0) {
           const t = start - 0.025;
@@ -61,9 +81,9 @@ export const CutsShowcase: React.FC = () => {
         }
         if (i < STEPS.length - 1) {
           const t = start + third - 0.065;
-          tl.fromTo(card, { opacity: 1, y: 0, scale: 1 }, { opacity: 0, y: -60, scale: 1.04, duration: 0.065 }, t);
-          tl.fromTo(cap, { opacity: 1, y: 0 }, { opacity: 0, y: -26, duration: 0.055 }, t);
-          tl.fromTo(bg, { opacity: 1 }, { opacity: 0, duration: 0.07 }, t + 0.02);
+          tl.fromTo(card, { opacity: 1, y: 0, scale: 1 }, { opacity: 0, y: -60, scale: 1.04, duration: 0.065, immediateRender: false }, t);
+          tl.fromTo(cap, { opacity: 1, y: 0 }, { opacity: 0, y: -26, duration: 0.055, immediateRender: false }, t);
+          tl.fromTo(bg, { opacity: 1 }, { opacity: 0, duration: 0.07, immediateRender: false }, t + 0.02);
         }
       });
       tl.fromTo('[data-bar]', { scaleY: 0, transformOrigin: 'top center' }, { scaleY: 1, duration: 1 }, 0);
