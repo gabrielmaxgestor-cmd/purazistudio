@@ -58,6 +58,7 @@ export default function App() {
   const [services, setServices] = useState<Service[]>([]);
   const [settings, setSettings] = useState<BarberSettings>(DEFAULT_BARBER_SETTINGS);
   const [refreshKey, setRefreshKey] = useState(0);
+  const [dataState, setDataState] = useState<'loading' | 'ready' | 'error'>('loading');
 
   const rootRef = useRef<HTMLDivElement>(null);
   const heroTl = useRef<gsap.core.Timeline | null>(null);
@@ -70,8 +71,9 @@ export default function App() {
         if (!alive) return;
         setServices(d.services);
         setSettings(d.settings);
+        setDataState('ready');
       })
-      .catch(() => undefined);
+      .catch(() => alive && setDataState('error'));
     return () => {
       alive = false;
     };
@@ -368,7 +370,7 @@ export default function App() {
               <CutsShowcase />
 
               {/* ---------- Localização ---------- */}
-              <LocationSection settings={settings} hoursLabel={hoursLabel} />
+              <LocationSection settings={settings} hoursLabel={hoursLabel} ready={dataState === 'ready'} />
             </div>
           </div>
         </div>
@@ -420,6 +422,28 @@ export default function App() {
           <span>Valença · RJ · Barbearia &amp; Visagismo</span>
         </div>
       </footer>
+
+      {dataState === 'error' && (
+        <div
+          role="alert"
+          className="fixed bottom-4 left-4 right-4 sm:left-1/2 sm:right-auto sm:-translate-x-1/2 z-40 flex flex-wrap items-center justify-center gap-x-4 gap-y-2 border border-white/15 bg-[#17171a]/95 backdrop-blur px-5 py-3 text-sm text-white shadow-[0_20px_60px_rgba(0,0,0,0.6)]"
+        >
+          <span>Não conseguimos carregar serviços e horários.</span>
+          <button
+            type="button"
+            onClick={() => {
+              setDataState('loading');
+              handleDataChanged();
+            }}
+            className="underline underline-offset-4 hover:text-neutral-300 cursor-pointer"
+          >
+            Tentar de novo
+          </button>
+          <a href={whatsappLink()} target="_blank" rel="noopener noreferrer" className="underline underline-offset-4 hover:text-neutral-300">
+            Falar no WhatsApp
+          </a>
+        </div>
+      )}
 
       <BookingDrawer
         isOpen={bookingOpen}
