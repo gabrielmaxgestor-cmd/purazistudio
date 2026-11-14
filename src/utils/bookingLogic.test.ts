@@ -142,22 +142,23 @@ test('daySchedules: sábado com horário reduzido libera só o expediente reduzi
     fixedOffDays: [0],
     daySchedules: { 6: { start: '09:00', end: '14:00' } },
   };
-  // 2026-11-14 é sábado
-  assert.equal(isTimeSlotAvailable('2026-11-14', '10:30', [], [], settings), true);
-  assert.equal(isTimeSlotAvailable('2026-11-14', '14:00', [], [], settings), false);
-  assert.equal(isTimeSlotAvailable('2026-11-14', '16:45', [], [], settings), false);
-  // 2026-11-13 é sexta: expediente padrão até 20:00
-  assert.equal(isTimeSlotAvailable('2026-11-13', '16:45', [], [], settings), true);
+  // datas fixas no passado (nunca coincidem com "hoje", então o teste não depende do relógio)
+  // 2026-10-31 é sábado
+  assert.equal(isTimeSlotAvailable('2026-10-31', '10:30', [], [], settings), true);
+  assert.equal(isTimeSlotAvailable('2026-10-31', '14:00', [], [], settings), false);
+  assert.equal(isTimeSlotAvailable('2026-10-31', '16:45', [], [], settings), false);
+  // 2026-10-30 é sexta: expediente padrão até 20:00
+  assert.equal(isTimeSlotAvailable('2026-10-30', '16:45', [], [], settings), true);
 });
 
 test('bloqueio parcial por faixa bloqueia só os horários da faixa', () => {
   const blocked: BlockedSlot[] = [
-    { id: 'b1', dateStr: '2026-11-16', timeStr: '12:00', endTimeStr: '14:00', reason: 'Almoço' },
+    { id: 'b1', dateStr: '2026-10-26', timeStr: '12:00', endTimeStr: '14:00', reason: 'Almoço' },
   ];
-  assert.equal(isTimeSlotAvailable('2026-11-16', '11:15', [], blocked), true);
-  assert.equal(isTimeSlotAvailable('2026-11-16', '12:00', [], blocked), false);
-  assert.equal(isTimeSlotAvailable('2026-11-16', '13:45', [], blocked), false);
-  assert.equal(isTimeSlotAvailable('2026-11-16', '14:00', [], blocked), true);
+  assert.equal(isTimeSlotAvailable('2026-10-26', '11:15', [], blocked), true);
+  assert.equal(isTimeSlotAvailable('2026-10-26', '12:00', [], blocked), false);
+  assert.equal(isTimeSlotAvailable('2026-10-26', '13:45', [], blocked), false);
+  assert.equal(isTimeSlotAvailable('2026-10-26', '14:00', [], blocked), true);
 });
 
 test('generateHoursForSchedule respeita o dia da semana', () => {
@@ -175,12 +176,12 @@ test('generateHoursForSchedule respeita o dia da semana', () => {
 test('isSlotFreeForDuration impede sobreposição e serviço que passa do fechamento', () => {
   const settings: BarberSettings = { workStart: '09:00', workEnd: '12:00', intervalMinutes: 45, fixedOffDays: [0], daySchedules: {} };
   const apts: Appointment[] = [
-    { id: 'a', code: 'PRZ-1', clientName: 'X', clientPhone: '24999999999', serviceId: 'combo', serviceName: 'Combo', price: 90, durationMinutes: 75, dateStr: '2026-11-16', timeStr: '10:30', status: 'confirmed', createdAt: '' },
+    { id: 'a', code: 'PRZ-1', clientName: 'X', clientPhone: '24999999999', serviceId: 'combo', serviceName: 'Combo', price: 90, durationMinutes: 75, dateStr: '2026-10-26', timeStr: '10:30', status: 'confirmed', createdAt: '' },
   ];
   // 10:30 + 75min ocupa até 11:45 -> 11:15 está ocupado, mesmo sem agendamento nesse horário
-  assert.equal(isSlotFreeForDuration('2026-11-16', '11:15', 45, apts, [], settings), false);
+  assert.equal(isSlotFreeForDuration('2026-10-26', '11:15', 45, apts, [], settings), false);
   // 09:45 + 45min = 10:30 -> termina exatamente quando o outro começa
-  assert.equal(isSlotFreeForDuration('2026-11-16', '09:45', 45, apts, [], settings), true);
+  assert.equal(isSlotFreeForDuration('2026-10-26', '09:45', 45, apts, [], settings), true);
   // 11:15 + 75min passaria das 12:00
   assert.equal(isSlotFreeForDuration('2026-11-17', '11:15', 75, [], [], settings), false);
 });
