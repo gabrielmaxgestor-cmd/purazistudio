@@ -9,12 +9,14 @@ import { IntroSplash } from './components/IntroSplash';
 import { MagneticButton } from './components/MagneticButton';
 import { DoubtsSection } from './components/DoubtsSection';
 import { CutsShowcase } from './components/CutsShowcase';
+import { LocationSection } from './components/LocationSection';
+import { SplitWords } from './components/SplitWords';
 import {
   Service, BarberSettings, DEFAULT_BARBER_SETTINGS,
 } from './utils/bookingLogic';
 import { loadPublicData } from './data/api';
-import { SITE, MAPS_LINK, MAPS_EMBED, whatsappLink } from './utils/siteConfig';
-import { ArrowRight, ArrowUpRight } from 'lucide-react';
+import { SITE, MAPS_LINK, whatsappLink } from './utils/siteConfig';
+import { ArrowRight } from 'lucide-react';
 
 gsap.registerPlugin(ScrollTrigger);
 
@@ -41,31 +43,6 @@ const formatOpenDays = (off: number[]) => {
     .join(' · ');
 };
 
-/* Divide um texto em palavras para animar cada uma subindo (efeito "split text") */
-const SplitWords: React.FC<{ text: string; attr: string }> = ({ text, attr }) => (
-  <>
-    {text.split(' ').map((w, i, arr) => (
-      <React.Fragment key={i}>
-        <span className="inline-block overflow-hidden align-bottom pb-[0.16em] -mb-[0.16em]">
-          <span className="inline-block will-change-transform" {...{ [attr]: '' }}>
-            {w}
-          </span>
-        </span>
-        {i < arr.length - 1 ? ' ' : ''}
-      </React.Fragment>
-    ))}
-  </>
-);
-
-/* Pin de localização vermelho do design */
-const LocationPin: React.FC<{ className?: string }> = ({ className }) => (
-  <svg viewBox="0 0 100 140" className={className} aria-hidden="true">
-    <path d="M50 0C22.4 0 0 22.4 0 50c0 37.5 50 90 50 90s50-52.5 50-90C100 22.4 77.6 0 50 0z" fill="#ff1414" />
-    <path d="M50 0C22.4 0 0 22.4 0 50c0 37.5 50 90 50 90V0z" fill="#c70f17" />
-    <circle cx="50" cy="48" r="21" fill="#212025" />
-  </svg>
-);
-
 const LETTERS = ['p', 'u', 'r', 'a', 'z', 'i'];
 
 export default function App() {
@@ -76,7 +53,6 @@ export default function App() {
   const [bookingOpen, setBookingOpen] = useState(false);
   const [consultOpen, setConsultOpen] = useState(false);
   const [adminOpen, setAdminOpen] = useState(false);
-  const [mapActive, setMapActive] = useState(false);
   const [selectedServiceId, setSelectedServiceId] = useState<string | null>(null);
 
   const [services, setServices] = useState<Service[]>([]);
@@ -265,12 +241,6 @@ export default function App() {
 
   const handleDataChanged = () => setRefreshKey((prev) => prev + 1);
 
-  const spotMove = (e: React.MouseEvent<HTMLElement>) => {
-    const r = e.currentTarget.getBoundingClientRect();
-    e.currentTarget.style.setProperty('--sx', `${e.clientX - r.left}px`);
-    e.currentTarget.style.setProperty('--sy', `${e.clientY - r.top}px`);
-  };
-
   const scrollToId = (id: string) => document.getElementById(id)?.scrollIntoView({ behavior: 'smooth' });
 
   const openDays = formatOpenDays(settings.fixedOffDays);
@@ -398,64 +368,7 @@ export default function App() {
               <CutsShowcase />
 
               {/* ---------- Localização ---------- */}
-              <section id="secao-localizacao" className="relative py-14 sm:py-24 grid lg:grid-cols-[1.05fr_1fr] gap-12 lg:gap-14 items-center">
-                <div className="min-w-0">
-                  <p data-reveal="up" className="shiny-text text-xs sm:text-[11px] uppercase tracking-[0.4em] font-semibold">
-                    Localização
-                  </p>
-
-                  <div className="mt-6 flex flex-col items-start gap-5 sm:flex-row sm:items-center sm:gap-6">
-                    <div data-pin className="relative shrink-0 w-16 sm:w-[clamp(44px,6vw,84px)]">
-                      <LocationPin className="w-full h-auto" />
-                      <span className="absolute left-1/2 -bottom-1 -translate-x-1/2 w-7 h-2 rounded-full bg-red-500/40 animate-ping" />
-                    </div>
-                    <p data-reveal="left" data-delay="0.2" className="font-serif font-light leading-[1.2] text-[2rem] sm:text-[clamp(1.35rem,2.55vw,2.35rem)]">
-                      <span className="block sm:whitespace-nowrap">Avenida Nilo Peçanha,</span>
-                      <span className="block sm:whitespace-nowrap">1027 - Valença/RJ</span>
-                    </p>
-                  </div>
-
-                  <p data-reveal="up" data-delay="0.25" className="mt-8 text-[13px] sm:text-xs uppercase tracking-[0.22em] text-neutral-400 sm:text-neutral-500">
-                    {hoursLabel}
-                  </p>
-
-                  <a
-                    data-reveal="up"
-                    data-delay="0.3"
-                    href={MAPS_LINK}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="group mt-6 inline-flex items-center gap-2 text-sm sm:text-xs uppercase tracking-[0.22em] text-white border-b border-white/30 hover:border-white py-2 sm:pb-1 sm:pt-0 transition-colors"
-                  >
-                    Como chegar
-                    <ArrowUpRight className="w-4 h-4 transition-transform duration-300 group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
-                  </a>
-                </div>
-
-                {/* mini mapa integrado */}
-                <div data-map onMouseMove={spotMove} className="spot beam relative h-[380px] sm:h-[380px] border border-white/10 bg-[#111113] overflow-hidden">
-                  <iframe
-                    title="Mapa do PURAZI Studio"
-                    src={MAPS_EMBED}
-                    loading="lazy"
-                    referrerPolicy="no-referrer-when-downgrade"
-                    className="absolute inset-0 w-full h-full border-0"
-                    style={{ filter: 'grayscale(1) invert(0.92) contrast(0.92) brightness(0.95)' }}
-                  />
-                  <div className="absolute inset-0 pointer-events-none shadow-[inset_0_0_70px_rgba(0,0,0,0.65)]" />
-                  {!mapActive && (
-                    <button
-                      onClick={() => setMapActive(true)}
-                      className="absolute inset-0 z-10 cursor-pointer"
-                      aria-label="Ativar o mapa para interagir"
-                    >
-                      <span className="absolute bottom-3 left-3 bg-black/70 backdrop-blur-sm px-3 py-2.5 text-[11px] sm:text-[10px] uppercase tracking-[0.2em] text-white/90">
-                        Toque para explorar o mapa
-                      </span>
-                    </button>
-                  )}
-                </div>
-              </section>
+              <LocationSection settings={settings} hoursLabel={hoursLabel} />
             </div>
           </div>
         </div>
