@@ -34,6 +34,8 @@ const MESSAGES: Record<string, string> = {
   not_found: 'Agendamento não encontrado. Confira o código e o WhatsApp informados.',
   not_confirmed: 'Esse agendamento não está mais ativo.',
   too_late: 'Remarcações e cancelamentos exigem 12h de antecedência. Fale conosco pelo WhatsApp.',
+  too_many_attempts: 'Muitas tentativas com esse WhatsApp. Aguarde 15 minutos ou fale conosco pelo WhatsApp.',
+  too_many_requests: 'Estamos com muitos pedidos agora. Tente de novo em alguns minutos ou fale conosco pelo WhatsApp.',
   invalid_status: 'Status inválido.',
   invalid_hours: 'O horário de fechamento precisa ser depois da abertura.',
   invalid_interval: 'Intervalo inválido.',
@@ -67,6 +69,10 @@ async function rpc<T>(fn: string, args?: Record<string, unknown>): Promise<T> {
     if (MESSAGES[error.message]) throw new ApiError(error.message);
     if (error.code === '42501' || /permission denied|forbidden/i.test(error.message)) throw new ApiError('forbidden');
     throw new ApiError('network');
+  }
+  // algumas funções do banco devolvem {"error": "codigo"} em vez de lançar exceção (preserva o limite de tentativas)
+  if (data && typeof data === 'object' && !Array.isArray(data) && typeof (data as { error?: unknown }).error === 'string') {
+    throw new ApiError((data as { error: string }).error);
   }
   return data as T;
 }
