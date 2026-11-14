@@ -88,9 +88,11 @@ const LocationPin: React.FC<{ className?: string }> = ({ className }) => (
 interface Props {
   settings: BarberSettings;
   hoursLabel: string;
+  /** false enquanto os horários reais não chegaram do banco (evita mostrar "aberto/fechado" com horário padrão) */
+  ready: boolean;
 }
 
-export const LocationSection: React.FC<Props> = ({ settings, hoursLabel }) => {
+export const LocationSection: React.FC<Props> = ({ settings, hoursLabel, ready }) => {
   const [mapActive, setMapActive] = useState(false);
   const [copied, setCopied] = useState(false);
   const [status, setStatus] = useState<OpenStatus>(() => computeStatus(settings));
@@ -185,22 +187,24 @@ export const LocationSection: React.FC<Props> = ({ settings, hoursLabel }) => {
           Localização
         </p>
 
-        {/* Status: Aberto agora / Fechado */}
-        <div
-          data-reveal="up"
-          data-delay="0.1"
-          role="status"
-          className="mt-5 inline-flex flex-wrap items-center gap-x-3 gap-y-1 border border-white/12 bg-white/[0.03] px-4 py-2.5 backdrop-blur-sm"
-        >
-          <span className="relative flex h-2.5 w-2.5 shrink-0">
-            {status.open && <span className="absolute inline-flex h-full w-full rounded-full bg-emerald-400/70 animate-ping" />}
-            <span className={`relative inline-flex h-2.5 w-2.5 rounded-full ${status.open ? 'bg-emerald-400' : 'bg-neutral-500'}`} />
-          </span>
-          <span className="text-[11px] uppercase tracking-[0.22em] font-semibold text-white">
-            {status.open ? 'Aberto agora' : 'Fechado agora'}
-          </span>
-          <span className="text-[11px] uppercase tracking-[0.18em] text-neutral-400">· {status.detail}</span>
-        </div>
+        {/* Status: Aberto agora / Fechado (só aparece quando os horários reais já carregaram) */}
+        {ready && (
+          <div
+            data-reveal="up"
+            data-delay="0.1"
+            role="status"
+            className="mt-5 inline-flex flex-wrap items-center gap-x-3 gap-y-1 border border-white/12 bg-white/[0.03] px-4 py-2.5 backdrop-blur-sm"
+          >
+            <span className="relative flex h-2.5 w-2.5 shrink-0">
+              {status.open && <span className="absolute inline-flex h-full w-full rounded-full bg-emerald-400/70 animate-ping" />}
+              <span className={`relative inline-flex h-2.5 w-2.5 rounded-full ${status.open ? 'bg-emerald-400' : 'bg-neutral-500'}`} />
+            </span>
+            <span className="text-[11px] uppercase tracking-[0.22em] font-semibold text-white">
+              {status.open ? 'Aberto agora' : 'Fechado agora'}
+            </span>
+            <span className="text-[11px] uppercase tracking-[0.18em] text-neutral-400">· {status.detail}</span>
+          </div>
+        )}
 
         {/* Pin + endereço em destaque tipográfico */}
         <div className="mt-9 flex flex-col items-start gap-6 sm:flex-row sm:items-center sm:gap-7">
