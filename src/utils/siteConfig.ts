@@ -20,6 +20,7 @@ export const SITE = {
 
 export const MAPS_QUERY = 'Avenida Nilo Peçanha 1027 Valença RJ';
 export const MAPS_LINK = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(MAPS_QUERY)}`;
+export const WAZE_LINK = `https://waze.com/ul?q=${encodeURIComponent(MAPS_QUERY)}&navigate=yes`;
 export const MAPS_EMBED = `https://www.google.com/maps?q=${encodeURIComponent(MAPS_QUERY)}&output=embed`;
 
 export const whatsappLink = (text = 'Olá! Vim pelo site do PURAZI Studio.') =>
