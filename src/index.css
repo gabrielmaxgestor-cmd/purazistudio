@@ -246,3 +246,31 @@ body {
   clip: rect(0 0 0 0);
   white-space: nowrap;
 }
+
+
+/* ---------- Localização: radar do pin e flutuação ---------- */
+@keyframes radar {
+  0% { transform: translate(-50%, -50%) scale(0.15); opacity: 0.75; }
+  100% { transform: translate(-50%, -50%) scale(1); opacity: 0; }
+}
+@keyframes pinFloat {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-7px); }
+}
+.radar-ring {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  border-radius: 9999px;
+  border: 1px solid rgba(255, 30, 30, 0.7);
+  background: radial-gradient(closest-side, rgba(255, 20, 20, 0.14), transparent);
+  animation: radar 3.2s cubic-bezier(0.2, 0.6, 0.3, 1) infinite;
+  pointer-events: none;
+}
+.radar-ring.r2 { animation-delay: 1.05s; }
+.radar-ring.r3 { animation-delay: 2.1s; }
+.pin-float { animation: pinFloat 3.2s ease-in-out infinite; }
+@media (prefers-reduced-motion: reduce) {
+  .radar-ring, .pin-float { animation: none; }
+  .radar-ring { opacity: 0.35; transform: translate(-50%, -50%) scale(0.7); }
+}
