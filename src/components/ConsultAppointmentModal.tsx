@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   X,
   Search,
@@ -65,6 +65,28 @@ export const ConsultAppointmentModal: React.FC<ConsultAppointmentModalProps> = (
     );
     return i < 0 ? list : list.filter((_, k) => k !== i);
   })();
+
+  // ao fechar, apaga tudo da tela (nome, WhatsApp e código de quem consultou não ficam para o próximo usuário do aparelho)
+  useEffect(() => {
+    if (isOpen) return;
+    setQueryCode('');
+    setQueryPhone('');
+    setFoundAppointment(null);
+    setSearchAttempted(false);
+    setActionMessage(null);
+    setIsRescheduling(false);
+    setRescheduleDay(null);
+    setRescheduleTime(null);
+    setPub(null);
+  }, [isOpen]);
+
+  // Esc fecha o modal
+  useEffect(() => {
+    if (!isOpen) return;
+    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && onClose();
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [isOpen, onClose]);
 
   if (!isOpen) return null;
 
@@ -191,7 +213,11 @@ export const ConsultAppointmentModal: React.FC<ConsultAppointmentModalProps> = (
               <input
                 id="q-code"
                 type="text"
-                placeholder="Ex: PRZ-4921"
+                placeholder="Ex: PRZ-7K4M2X"
+                maxLength={12}
+                autoCapitalize="characters"
+                autoComplete="off"
+                spellCheck={false}
                 value={queryCode}
                 onChange={(e) => setQueryCode(e.target.value)}
                 className="w-full bg-[#19191c] border border-neutral-800 px-3.5 py-2.5 text-xs text-white uppercase placeholder:normal-case placeholder:text-neutral-600 focus:outline-none focus:border-amber-200 font-mono rounded-none"
