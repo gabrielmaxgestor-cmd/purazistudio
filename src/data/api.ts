@@ -30,7 +30,7 @@ const MESSAGES: Record<string, string> = {
   invalid_phone: 'Informe um WhatsApp válido com DDD (ex.: 24 99999-9999).',
   invalid_name: 'Informe seu nome.',
   invalid_service: 'Esse serviço não está mais disponível.',
-  too_many: 'Você já tem 3 agendamentos em aberto. Fale conosco pelo WhatsApp para marcar outro.',
+  too_many: 'Você já tem 10 agendamentos em aberto. Fale conosco pelo WhatsApp para marcar outro.',
   not_found: 'Agendamento não encontrado. Confira o código e o WhatsApp informados.',
   not_confirmed: 'Esse agendamento não está mais ativo.',
   too_late: 'Remarcações e cancelamentos exigem 12h de antecedência. Fale conosco pelo WhatsApp.',
