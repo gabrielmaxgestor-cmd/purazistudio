@@ -90,10 +90,10 @@ test('lista vem ordenada por data e hora', () => {
   assert.deepEqual(getSaved().map((s) => s.code), ['PRZ-CCCCCC', 'PRZ-AAAAAA', 'PRZ-BBBBBB']);
 });
 
-test('guarda no máximo 8 agendamentos', () => {
+test('guarda no máximo 10 agendamentos', () => {
   installStorage();
   for (let i = 1; i <= 12; i++) upsertSaved(apt({ code: `PRZ-N${String(i).padStart(5, '0')}`, dateStr: `2999-01-${String(i).padStart(2, '0')}` }));
-  assert.equal(getSaved().length, 8);
+  assert.equal(getSaved().length, 10);
 });
 
 test('removeSaved e clearSaved', () => {
