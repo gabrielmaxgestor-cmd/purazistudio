@@ -7,7 +7,7 @@
 import { supabase, supabaseEnabled } from '../lib/supabase';
 import {
   Service, Appointment, BlockedSlot, BarberSettings, DEFAULT_BARBER_SETTINGS,
-  isSlotFreeForDuration, generateBookingCode, canRescheduleOrCancel,
+  isSlotFreeForDuration, generateBookingCode, canRescheduleOrCancel, todayStr,
 } from '../utils/bookingLogic';
 import {
   getStoredAppointments, saveAppointment, updateAppointmentStatus, getStoredServices, saveServices,
@@ -150,6 +150,34 @@ export async function lookupAppointment(code: string, phone: string): Promise<Ap
   const c = code.trim().toUpperCase();
   const p = cleanPhone(phone);
   return getStoredAppointments().find((a) => a.code === c && a.clientPhone === p) || null;
+}
+
+/**
+ * Consulta por código + WhatsApp. Devolve o agendamento do código digitado (1º item) e, depois,
+ * os demais agendamentos futuros confirmados do mesmo WhatsApp. `null` = não encontrado.
+ */
+export async function lookupAppointments(code: string, phone: string): Promise<Appointment[] | null> {
+  if (dataMode === 'supabase') {
+    try {
+      return await rpc<Appointment[] | null>('list_my_appointments', { p_code: code, p_phone: phone });
+    } catch (e) {
+      // banco ainda sem a função nova (SQL "my_appointments" não rodou): usa a consulta simples
+      if (e instanceof ApiError && e.code === 'network') {
+        const one = await lookupAppointment(code, phone);
+        return one ? [one] : null;
+      }
+      throw e;
+    }
+  }
+  const found = await lookupAppointment(code, phone);
+  if (!found) return null;
+  const p = cleanPhone(phone);
+  const today = todayStr();
+  const others = getStoredAppointments()
+    .filter((a) => a.clientPhone === p && a.status === 'confirmed' && a.id !== found.id && a.dateStr >= today)
+    .sort((a, b) => `${a.dateStr} ${a.timeStr}`.localeCompare(`${b.dateStr} ${b.timeStr}`))
+    .slice(0, 10);
+  return [found, ...others];
 }
 
 export async function cancelAppointment(code: string, phone: string): Promise<Appointment> {
