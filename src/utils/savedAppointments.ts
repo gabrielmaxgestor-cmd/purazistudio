@@ -9,7 +9,7 @@ import { Appointment, todayStr } from './bookingLogic';
 
 const KEY = 'purazi_saved_appointments_v1';
 const PREF = 'purazi_remember_v1';
-const MAX_SAVED = 8;
+const MAX_SAVED = 10;
 
 export interface SavedAppointment {
   code: string;
