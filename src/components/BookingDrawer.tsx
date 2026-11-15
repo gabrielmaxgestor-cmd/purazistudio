@@ -10,6 +10,8 @@ import {
   formatWhatsAppBookingMessage, todayStr,
 } from '../utils/bookingLogic';
 import { loadPublicData, createAppointment, friendlyError } from '../data/api';
+import { RememberCheckbox } from './RememberCheckbox';
+import { upsertSaved, getRemember } from '../utils/savedAppointments';
 
 interface BookingDrawerProps {
   isOpen: boolean;
@@ -243,6 +245,7 @@ export const BookingDrawer: React.FC<BookingDrawerProps> = ({
         phone: clientPhone,
       });
       setConfirmed(apt);
+      upsertSaved(apt); // só salva se o cliente deixou "lembrar neste aparelho" ligado
       setStep(4);
       onBookingComplete?.(apt);
     } catch (err) {
@@ -516,6 +519,7 @@ export const BookingDrawer: React.FC<BookingDrawerProps> = ({
                     </div>
                     <p className="mt-2 text-xs text-white/35">Usamos só para confirmar ou remarcar seu horário.</p>
                   </div>
+                  <RememberCheckbox className="pt-1" />
                 </form>
               </div>
             )}
@@ -535,6 +539,10 @@ export const BookingDrawer: React.FC<BookingDrawerProps> = ({
                   <div className="p-5 text-center border-b border-dashed border-white/20">
                     <p className="text-[10px] uppercase tracking-[0.25em] text-white/40">Seu código</p>
                     <p className="mt-1 font-mono text-3xl tracking-[0.12em]">{confirmed.code}</p>
+                    <p className="mt-3 text-[11px] leading-relaxed text-white/45">
+                      Guarde este código: você vai precisar dele para consultar, remarcar ou cancelar.
+                      {getRemember() ? ' Também o guardamos neste aparelho.' : ''}
+                    </p>
                   </div>
                   <dl className="p-5 space-y-3 text-sm">
                     {[
