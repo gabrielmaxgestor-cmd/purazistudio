@@ -22,11 +22,20 @@ import {
 import {
   PublicData,
   loadPublicData,
-  lookupAppointment,
+  lookupAppointments,
   cancelAppointment,
   rescheduleAppointment,
   friendlyError,
 } from '../data/api';
+import { whatsappLink } from '../utils/siteConfig';
+import { SavedAppointment, getSaved, upsertSaved, removeSaved, clearSaved } from '../utils/savedAppointments';
+import { RememberCheckbox } from './RememberCheckbox';
+
+const maskPhone = (d: string) =>
+  d.length === 11 ? `(${d.slice(0, 2)}) ${d.slice(2, 7)}-${d.slice(7)}` : d.length === 10 ? `(${d.slice(0, 2)}) ${d.slice(2, 6)}-${d.slice(6)}` : d;
+
+const shortDate = (dateStr: string) =>
+  new Date(`${dateStr}T12:00:00`).toLocaleDateString('pt-BR', { weekday: 'short', day: '2-digit', month: '2-digit' }).replace('.', '');
 
 interface ConsultAppointmentModalProps {
   isOpen: boolean;
@@ -42,6 +51,8 @@ export const ConsultAppointmentModal: React.FC<ConsultAppointmentModalProps> = (
   const [queryCode, setQueryCode] = useState('');
   const [queryPhone, setQueryPhone] = useState('');
   const [foundAppointment, setFoundAppointment] = useState<Appointment | null>(null);
+  const [foundList, setFoundList] = useState<Appointment[]>([]);
+  const [saved, setSaved] = useState<SavedAppointment[]>([]);
   const [searchAttempted, setSearchAttempted] = useState(false);
   const [actionMessage, setActionMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
@@ -68,7 +79,11 @@ export const ConsultAppointmentModal: React.FC<ConsultAppointmentModalProps> = (
 
   // ao fechar, apaga tudo da tela (nome, WhatsApp e código de quem consultou não ficam para o próximo usuário do aparelho)
   useEffect(() => {
-    if (isOpen) return;
+    if (isOpen) {
+      setSaved(getSaved());
+      return;
+    }
+    setFoundList([]);
     setQueryCode('');
     setQueryPhone('');
     setFoundAppointment(null);
@@ -90,26 +105,61 @@ export const ConsultAppointmentModal: React.FC<ConsultAppointmentModalProps> = (
 
   if (!isOpen) return null;
 
-  const handleSearch = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const runLookup = async (code: string, phone: string) => {
     setActionMessage(null);
     setIsRescheduling(false);
+    setRescheduleDay(null);
+    setRescheduleTime(null);
     setSearchAttempted(true);
 
-    if (!queryCode.trim() || queryPhone.replace(/\D/g, '').length < 10) {
+    if (!code.trim() || phone.replace(/\D/g, '').length < 10) {
       setFoundAppointment(null);
+      setFoundList([]);
       setActionMessage({ type: 'error', text: 'Informe o código do agendamento e o WhatsApp usado na reserva (com DDD).' });
       return;
     }
     setWorking(true);
     try {
-      setFoundAppointment(await lookupAppointment(queryCode, queryPhone));
+      const list = await lookupAppointments(code, phone);
+      setFoundList(list ?? []);
+      setFoundAppointment(list ? list[0] : null);
+      if (list) list.forEach((a) => upsertSaved(a));
+      else removeSaved(code.trim().toUpperCase());
+      setSaved(getSaved());
     } catch (err) {
       setFoundAppointment(null);
+      setFoundList([]);
       setActionMessage({ type: 'error', text: friendlyError(err) });
     } finally {
       setWorking(false);
     }
+  };
+
+  const handleSearch = (e: React.FormEvent) => {
+    e.preventDefault();
+    void runLookup(queryCode, queryPhone);
+  };
+
+  const openSaved = (s: SavedAppointment) => {
+    setQueryCode(s.code);
+    setQueryPhone(maskPhone(s.phone));
+    void runLookup(s.code, s.phone);
+  };
+
+  const selectFromList = (a: Appointment) => {
+    setFoundAppointment(a);
+    setIsRescheduling(false);
+    setRescheduleDay(null);
+    setRescheduleTime(null);
+    setActionMessage(null);
+  };
+
+  // mantém a lista e a memória do aparelho em dia depois de cancelar/remarcar
+  const applyUpdate = (updated: Appointment) => {
+    setFoundAppointment(updated);
+    setFoundList((l) => l.map((x) => (x.id === updated.id ? updated : x)));
+    upsertSaved(updated); // confirmado: atualiza data/hora; cancelado: remove
+    setSaved(getSaved());
   };
 
   const handleCancelAppointment = async () => {
@@ -126,7 +176,7 @@ export const ConsultAppointmentModal: React.FC<ConsultAppointmentModalProps> = (
       setWorking(true);
       try {
         const updated = await cancelAppointment(foundAppointment.code, foundAppointment.clientPhone);
-        setFoundAppointment(updated);
+        applyUpdate(updated);
         setActionMessage({ type: 'success', text: 'Agendamento cancelado com sucesso. O horário foi liberado na agenda.' });
         if (onAppointmentsUpdated) onAppointmentsUpdated();
       } catch (err) {
@@ -145,7 +195,7 @@ export const ConsultAppointmentModal: React.FC<ConsultAppointmentModalProps> = (
     setWorking(true);
     try {
       const updated = await rescheduleAppointment(foundAppointment.code, foundAppointment.clientPhone, rescheduleDay.dateStr, rescheduleTime);
-      setFoundAppointment(updated);
+      applyUpdate(updated);
       setIsRescheduling(false);
       setActionMessage({ type: 'success', text: `Agendamento remarcado com sucesso para ${rescheduleDay.fullLabel} às ${rescheduleTime}!` });
       if (onAppointmentsUpdated) onAppointmentsUpdated();
@@ -199,9 +249,48 @@ export const ConsultAppointmentModal: React.FC<ConsultAppointmentModalProps> = (
             Consultar Meu Agendamento
           </h2>
           <p className="text-xs text-neutral-400 mt-1 font-sans">
-            Informe o código do agendamento (ex.: PRZ-4921) e o WhatsApp usado na reserva para visualizar, remarcar ou cancelar até 12 horas antes.
+            Informe o código do agendamento (ex.: PRZ-7K4M2X) e o WhatsApp usado na reserva para visualizar, remarcar ou cancelar até 12 horas antes.
           </p>
         </div>
+
+        {/* Agendamentos lembrados neste aparelho: consulta com um toque */}
+        {saved.length > 0 && !foundAppointment && (
+          <div className="mb-6">
+            <div className="flex items-center justify-between mb-2">
+              <p className="text-[11px] uppercase tracking-wider text-amber-200 font-semibold">Neste aparelho</p>
+              <button
+                type="button"
+                onClick={() => {
+                  clearSaved();
+                  setSaved([]);
+                }}
+                className="text-[11px] text-neutral-500 hover:text-white underline underline-offset-2 cursor-pointer"
+              >
+                Esquecer
+              </button>
+            </div>
+            <div className="space-y-2">
+              {saved.map((s) => (
+                <button
+                  key={s.code}
+                  type="button"
+                  disabled={working}
+                  onClick={() => openSaved(s)}
+                  className="w-full flex items-center justify-between gap-3 bg-[#19191c] border border-neutral-800 hover:border-amber-200/60 px-4 py-3 text-left cursor-pointer transition-colors disabled:opacity-60"
+                >
+                  <span>
+                    <span className="block text-sm font-semibold text-white">
+                      {shortDate(s.dateStr)} às {s.timeStr}
+                    </span>
+                    <span className="block text-[11px] text-neutral-400">{s.serviceName}</span>
+                  </span>
+                  <span className="text-[11px] uppercase tracking-wider text-amber-200">{working ? '…' : 'Abrir'}</span>
+                </button>
+              ))}
+            </div>
+            <p className="mt-3 text-[11px] text-neutral-500">Ou digite o código abaixo.</p>
+          </div>
+        )}
 
         {/* Search Form */}
         <form onSubmit={handleSearch} className="space-y-4 mb-6">
@@ -248,6 +337,19 @@ export const ConsultAppointmentModal: React.FC<ConsultAppointmentModalProps> = (
           </button>
         </form>
 
+        <div className="-mt-2 mb-6 flex flex-col gap-4">
+          <RememberCheckbox onChange={() => setSaved(getSaved())} />
+          <a
+            href={whatsappLink('Olá! Esqueci o código do meu agendamento no site do PURAZI Studio. Meu nome é: ')}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex w-fit items-center gap-2 text-xs text-neutral-400 hover:text-white underline underline-offset-4 transition-colors"
+          >
+            <MessageCircle className="w-4 h-4" />
+            Esqueci meu código
+          </a>
+        </div>
+
         {/* Action message */}
         {actionMessage && (
           <div
@@ -263,6 +365,33 @@ export const ConsultAppointmentModal: React.FC<ConsultAppointmentModalProps> = (
               <AlertTriangle className="w-4 h-4 text-red-400 shrink-0 mt-0.5" />
             )}
             <span>{actionMessage.text}</span>
+          </div>
+        )}
+
+        {/* Vários agendamentos no mesmo WhatsApp: escolha qual abrir */}
+        {foundList.length > 1 && (
+          <div className="mb-4">
+            <p className="text-[11px] uppercase tracking-wider text-neutral-400 mb-2">Seus agendamentos ({foundList.length})</p>
+            <div className="flex gap-2 overflow-x-auto pb-2">
+              {foundList.map((a) => {
+                const active = foundAppointment?.id === a.id;
+                return (
+                  <button
+                    key={a.id}
+                    type="button"
+                    onClick={() => selectFromList(a)}
+                    className={`shrink-0 px-3.5 py-2.5 text-left border cursor-pointer transition-colors ${
+                      active ? 'border-amber-200 bg-neutral-900 text-amber-200' : 'border-neutral-800 bg-[#1c1c20] text-neutral-300 hover:border-neutral-600'
+                    }`}
+                  >
+                    <span className="block text-xs font-semibold">
+                      {shortDate(a.dateStr)} · {a.timeStr}
+                    </span>
+                    <span className="block text-[10px] text-neutral-500">{a.status === 'confirmed' ? a.serviceName : a.status === 'completed' ? 'Concluído' : 'Cancelado'}</span>
+                  </button>
+                );
+              })}
+            </div>
           </div>
         )}
 
