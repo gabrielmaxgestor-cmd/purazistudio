@@ -5,7 +5,7 @@ import {
 } from 'lucide-react';
 import {
   Service, Appointment, BlockedSlot, BarberSettings, BreakRule, DEFAULT_BARBER_SETTINGS,
-  getDaySchedule, getDayBreaks, todayStr,
+  getDaySchedule, getDayBreaks, todayStr, isClosedForReopen,
 } from '../utils/bookingLogic';
 import { changePassword, getAuthMode, getExportableHash, logout } from '../utils/adminAuth';
 import {
@@ -570,7 +570,11 @@ const AdminShell: React.FC<{ onClose: () => void; onLogout: () => void; onDataCh
                               <button onClick={() => setStatus(a.id, 'cancelled')} className="inline-flex items-center gap-1.5 h-10 px-3 border border-white/15 hover:border-rose-400/50 hover:text-rose-300 text-xs uppercase tracking-[0.12em] font-semibold text-white/70 cursor-pointer transition-colors"><XCircle className="w-4 h-4" />Cancelar</button>
                             </>
                           ) : (
-                            <button onClick={() => setStatus(a.id, 'confirmed')} className={btnGhost}><RotateCcw className="w-4 h-4" />Reabrir</button>
+                            isClosedForReopen(a.dateStr, a.timeStr) ? (
+                              <span className="inline-flex items-center h-10 px-3 text-[11px] uppercase tracking-[0.14em] text-white/35 border border-white/10" title="12h depois do horário marcado o atendimento é encerrado e não pode ser reaberto">Encerrado</span>
+                            ) : (
+                              <button onClick={() => setStatus(a.id, 'confirmed')} className={btnGhost}><RotateCcw className="w-4 h-4" />Reabrir</button>
+                            )
                           )}
                         </div>
                       </article>
