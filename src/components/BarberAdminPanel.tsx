@@ -4,121 +4,45 @@ import {
   MessageCircle, ChevronLeft, ChevronRight, LogOut, KeyRound, Pencil, Search, Ban, Save, Check, Copy,
 } from 'lucide-react';
 import {
-  Service, Appointment, BlockedSlot, BarberSettings, DEFAULT_BARBER_SETTINGS,
-  getDaySchedule, todayStr,
+  Service, Appointment, BlockedSlot, BarberSettings, BreakRule, DEFAULT_BARBER_SETTINGS,
+  getDaySchedule, getDayBreaks, todayStr,
 } from '../utils/bookingLogic';
 import { changePassword, getAuthMode, getExportableHash, logout } from '../utils/adminAuth';
 import {
   dataMode, adminLoad, adminLoadLists, adminSetStatus, adminSaveSettings, adminAddBlock, adminRemoveBlock,
   adminSaveService, adminDeleteService, adminHasSession, adminSessionAlive, adminSignOut, adminChangePassword,
-  friendlyError,
+  friendlyError, adminDeleteAppointment, adminCancelClientFuture, adminDeleteClient, adminUpdateClient,
 } from '../data/api';
+import { ClientHistory } from './ClientHistory';
 import { AdminLogin } from './AdminLogin';
+import {
+  WEEK_LONG,
+  WEEK_SHORT,
+  WEEK_ORDER,
+  brl,
+  parseDate,
+  addDays,
+  longDate,
+  shortBR,
+  fmtPhone,
+  countSlots,
+  initials,
+  card,
+  inp,
+  lbl,
+  btnGhost,
+  btnSolid,
+  STATUS,
+  Switch,
+  PageHead,
+  Stat,
+  ConfirmDelete,
+  normBreaks,
+} from './adminUi';
 
 /* ───────────────────────── helpers ───────────────────────── */
 
 type Tab = 'agenda' | 'horarios' | 'servicos' | 'clientes' | 'resumo';
-
-const WEEK_LONG = ['Domingo', 'Segunda-feira', 'Terça-feira', 'Quarta-feira', 'Quinta-feira', 'Sexta-feira', 'Sábado'];
-const WEEK_SHORT = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
-const WEEK_ORDER = [1, 2, 3, 4, 5, 6, 0]; // segunda → domingo
-
-const brl = (n: number) => `R$ ${n.toFixed(2).replace('.', ',')}`;
-const parseDate = (s: string) => {
-  const [y, m, d] = s.split('-').map(Number);
-  return new Date(y, m - 1, d);
-};
-const addDays = (s: string, n: number) => {
-  const d = parseDate(s);
-  d.setDate(d.getDate() + n);
-  return todayStr(d);
-};
-const longDate = (s: string) =>
-  parseDate(s).toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'long' });
-const shortBR = (s: string) => s.split('-').reverse().slice(0, 2).join('/');
-const fmtPhone = (p: string) => {
-  const d = p.replace(/\D/g, '');
-  return d.length === 11 ? `(${d.slice(0, 2)}) ${d.slice(2, 7)}-${d.slice(7)}` : d.length === 10 ? `(${d.slice(0, 2)}) ${d.slice(2, 6)}-${d.slice(6)}` : p;
-};
-const countSlots = (start: string, end: string, interval: number) => {
-  const [sh, sm] = start.split(':').map(Number);
-  const [eh, em] = end.split(':').map(Number);
-  const total = eh * 60 + em - (sh * 60 + sm);
-  return total > 0 ? Math.ceil(total / (interval || 45)) : 0;
-};
-const initials = (name: string) =>
-  name.trim().split(/\s+/).slice(0, 2).map((p) => p[0]?.toUpperCase()).join('') || '?';
-
-const card = 'bg-[#141417] border border-white/[0.08]';
-const inp =
-  'h-11 w-full bg-black/40 border border-white/10 focus:border-white/45 outline-none px-3 text-sm text-white placeholder:text-white/30 transition-colors';
-const lbl = 'block text-[11px] uppercase tracking-[0.18em] text-white/45 mb-1.5';
-const btnGhost =
-  'inline-flex items-center justify-center gap-2 h-10 px-4 border border-white/15 hover:border-white/40 hover:bg-white/5 text-xs uppercase tracking-[0.14em] font-semibold text-white/85 transition-colors cursor-pointer';
-const btnSolid =
-  'inline-flex items-center justify-center gap-2 h-11 px-6 bg-white text-black hover:bg-neutral-200 text-xs uppercase tracking-[0.16em] font-bold transition-colors cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed';
-
-const STATUS = {
-  confirmed: { label: 'Confirmado', cls: 'text-emerald-300 bg-emerald-400/10 border-emerald-400/25' },
-  completed: { label: 'Concluído', cls: 'text-sky-300 bg-sky-400/10 border-sky-400/25' },
-  cancelled: { label: 'Cancelado', cls: 'text-rose-300 bg-rose-400/10 border-rose-400/25' },
-} as const;
-
-const Switch: React.FC<{ on: boolean; onChange: (v: boolean) => void; label: string }> = ({ on, onChange, label }) => (
-  <button
-    type="button"
-    role="switch"
-    aria-checked={on}
-    aria-label={label}
-    onClick={() => onChange(!on)}
-    className={`relative w-11 h-6 rounded-full transition-colors cursor-pointer shrink-0 ${on ? 'bg-emerald-400' : 'bg-white/15'}`}
-  >
-    <span className={`absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-white shadow transition-transform ${on ? 'translate-x-5' : ''}`} />
-  </button>
-);
-
-const PageHead: React.FC<{ title: string; subtitle?: string; right?: React.ReactNode }> = ({ title, subtitle, right }) => (
-  <div className="flex flex-wrap items-end justify-between gap-4 mb-6">
-    <div>
-      <h2 className="font-serif text-[1.9rem] sm:text-4xl leading-none">{title}</h2>
-      {subtitle && <p className="mt-2 text-sm text-white/50 first-letter:uppercase">{subtitle}</p>}
-    </div>
-    {right}
-  </div>
-);
-
-const Stat: React.FC<{ label: string; value: string; hint?: string; icon: React.ReactNode }> = ({ label, value, hint, icon }) => (
-  <div className={`${card} p-4 sm:p-5 flex items-start justify-between gap-3`}>
-    <div className="min-w-0">
-      <p className="text-[11px] uppercase tracking-[0.18em] text-white/45">{label}</p>
-      <p className="mt-2 font-serif text-2xl sm:text-3xl leading-none">{value}</p>
-      {hint && <p className="mt-2 text-xs text-white/40">{hint}</p>}
-    </div>
-    <span className="w-9 h-9 shrink-0 flex items-center justify-center rounded-full bg-white/5 border border-white/10 text-white/70">{icon}</span>
-  </div>
-);
-
-/** Botão de exclusão com confirmação em 2 toques (evita apagar sem querer) */
-const ConfirmDelete: React.FC<{ onConfirm: () => void; label?: string }> = ({ onConfirm, label = 'Remover' }) => {
-  const [armed, setArmed] = useState(false);
-  useEffect(() => {
-    if (!armed) return;
-    const t = window.setTimeout(() => setArmed(false), 3000);
-    return () => window.clearTimeout(t);
-  }, [armed]);
-  return (
-    <button
-      type="button"
-      onClick={() => (armed ? onConfirm() : setArmed(true))}
-      className={`inline-flex items-center gap-1.5 h-9 px-3 text-[11px] uppercase tracking-[0.14em] font-semibold border transition-colors cursor-pointer ${
-        armed ? 'bg-rose-500 border-rose-500 text-white' : 'border-white/15 text-white/60 hover:text-rose-300 hover:border-rose-400/40'
-      }`}
-    >
-      <Trash2 className="w-3.5 h-3.5" />
-      {armed ? 'Confirmar?' : label}
-    </button>
-  );
-};
 
 /* ───────────────────────── raiz: login + painel ───────────────────────── */
 
@@ -207,6 +131,7 @@ const AdminShell: React.FC<{ onClose: () => void; onLogout: () => void; onDataCh
   const [interval, setIntervalMin] = useState(String(settings.intervalMinutes || 45));
   const [offDays, setOffDays] = useState<number[]>(settings.fixedOffDays || []);
   const [custom, setCustom] = useState<Record<number, { start: string; end: string } | undefined>>(settings.daySchedules || {});
+  const [breaks, setBreaks] = useState<BreakRule[]>(settings.breaks || []);
 
   // formulário de bloqueio
   const [blkDate, setBlkDate] = useState(todayStr());
@@ -221,6 +146,7 @@ const AdminShell: React.FC<{ onClose: () => void; onLogout: () => void; onDataCh
   const [editingId, setEditingId] = useState<string | null>(null);
 
   const [clientQuery, setClientQuery] = useState('');
+  const [clientSel, setClientSel] = useState<string | null>(null); // WhatsApp do cliente aberto (histórico)
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => e.key === 'Escape' && !securityOpen && onClose();
@@ -240,6 +166,7 @@ const AdminShell: React.FC<{ onClose: () => void; onLogout: () => void; onDataCh
     setIntervalMin(String(st.intervalMinutes || 45));
     setOffDays(st.fixedOffDays || []);
     setCustom(st.daySchedules || {});
+    setBreaks(st.breaks || []);
   };
 
   const refreshLists = async () => {
@@ -333,16 +260,46 @@ const AdminShell: React.FC<{ onClose: () => void; onLogout: () => void; onDataCh
       const c = custom[wd];
       if (!offDays.includes(wd) && c && (c.start !== defStart || c.end !== defEnd)) ds[wd] = c;
     });
-    return { fixedOffDays: offDays, workStart: defStart, workEnd: defEnd, intervalMinutes: parseInt(interval, 10) || 45, daySchedules: ds };
-  }, [offDays, custom, defStart, defEnd, interval]);
+    return { fixedOffDays: offDays, workStart: defStart, workEnd: defEnd, intervalMinutes: parseInt(interval, 10) || 45, daySchedules: ds, breaks: normBreaks(breaks) };
+  }, [offDays, custom, defStart, defEnd, interval, breaks]);
 
-  const dirty = JSON.stringify(built) !== JSON.stringify({ ...DEFAULT_BARBER_SETTINGS, ...settings, daySchedules: settings.daySchedules || {} });
+  const dirty =
+    JSON.stringify(built) !==
+    JSON.stringify({ ...DEFAULT_BARBER_SETTINGS, ...settings, daySchedules: settings.daySchedules || {}, breaks: normBreaks(settings.breaks || []) });
+
+  /* ----- intervalos programados ----- */
+  const openDays = WEEK_ORDER.filter((d) => !offDays.includes(d));
+  const addBreak = (preset: Partial<BreakRule> = {}) =>
+    setBreaks((p) => (p.length >= 10 ? p : [...p, { start: '12:00', end: '13:00', days: openDays, label: 'Almoço', ...preset }]));
+  const updateBreak = (i: number, patch: Partial<BreakRule>) => setBreaks((p) => p.map((b, k) => (k === i ? { ...b, ...patch } : b)));
+  const removeBreak = (i: number) => setBreaks((p) => p.filter((_, k) => k !== i));
+  const toggleBreakDay = (i: number, wd: number) =>
+    setBreaks((p) => p.map((b, k) => (k === i ? { ...b, days: b.days.includes(wd) ? b.days.filter((d) => d !== wd) : [...b.days, wd] } : b)));
+  const minutes = (t: string) => {
+    const [h, m] = t.split(':').map(Number);
+    return h * 60 + m;
+  };
+  // agendamentos futuros já marcados que caem dentro do intervalo (continuam valendo, mas vale avisar)
+  const breakConflicts = (b: BreakRule) => {
+    if (!b.start || !b.end || b.start >= b.end || b.days.length === 0) return 0;
+    return appointments.filter((a) => {
+      if (a.status !== 'confirmed' || a.dateStr < todayStr()) return false;
+      if (!b.days.includes(parseDate(a.dateStr).getDay())) return false;
+      const st = minutes(a.timeStr);
+      return st < minutes(b.end) && st + a.durationMinutes > minutes(b.start);
+    }).length;
+  };
 
   const saveSettings = () => {
     if (defStart >= defEnd) return notify('O horário de fechamento precisa ser depois da abertura.');
     for (const wd of WEEK_ORDER) {
       const c = built.daySchedules?.[wd];
       if (c && c.start >= c.end) return notify(`${WEEK_LONG[wd]}: o fechamento precisa ser depois da abertura.`);
+    }
+    for (const [i, b] of (built.breaks || []).entries()) {
+      const nome = b.label || `Intervalo ${i + 1}`;
+      if (!b.start || !b.end || b.start >= b.end) return notify(`${nome}: o fim do intervalo precisa ser depois do início.`);
+      if (b.days.length === 0) return notify(`${nome}: escolha ao menos um dia da semana.`);
     }
     run(async () => {
       await adminSaveSettings(built);
@@ -413,6 +370,38 @@ const AdminShell: React.FC<{ onClose: () => void; onLogout: () => void; onDataCh
       await adminDeleteService(id);
       await reloadAll();
     }, 'Serviço removido.');
+
+  /* ----- histórico do cliente ----- */
+  const deleteAppointment = (id: string) =>
+    run(async () => {
+      await adminDeleteAppointment(id);
+      await refreshLists();
+    }, 'Agendamento excluído do histórico.');
+
+  const cancelClientFuture = (phone: string) =>
+    run(async () => {
+      const n = await adminCancelClientFuture(phone);
+      await refreshLists();
+      notify(n === 1 ? '1 horário futuro cancelado — agenda liberada.' : `${n} horários futuros cancelados — agenda liberada.`);
+    });
+
+  const deleteClient = (phone: string) =>
+    run(async () => {
+      await adminDeleteClient(phone);
+      await refreshLists();
+      setClientSel(null);
+    }, 'Cliente excluído.');
+
+  const updateClient = async (phone: string, name: string, newPhone: string): Promise<boolean> => {
+    let ok = false;
+    await run(async () => {
+      await adminUpdateClient(phone, name, newPhone);
+      await refreshLists();
+      setClientSel(newPhone.replace(/\D/g, '') || phone);
+      ok = true;
+    }, 'Dados do cliente atualizados.');
+    return ok;
+  };
 
   /* ----- clientes / resumo ----- */
   const clients = useMemo(() => {
@@ -533,6 +522,12 @@ const AdminShell: React.FC<{ onClose: () => void; onLogout: () => void; onDataCh
                   {!daySchedule && (
                     <div className="flex items-center gap-3 p-4 border border-amber-400/25 bg-amber-400/[0.07] text-amber-200 text-sm"><Ban className="w-4 h-4 shrink-0" /> Este dia é folga fixa — não recebe agendamentos.</div>
                   )}
+                  {daySchedule && getDayBreaks(selectedDate, settings).map((b, i) => (
+                    <div key={`brk-${i}`} className="flex items-center gap-3 p-4 border border-white/10 bg-white/[0.03] text-white/65 text-sm">
+                      <Clock className="w-4 h-4 shrink-0" />
+                      <span className="truncate"><b className="font-semibold text-white/85">{b.label || 'Intervalo'}</b> · {b.start}–{b.end} · sem agendamentos novos (edite em Horários)</span>
+                    </div>
+                  ))}
                   {dayBlocks.map((b) => (
                     <div key={b.id} className="flex items-center justify-between gap-3 p-4 border border-amber-400/25 bg-amber-400/[0.07]">
                       <div className="flex items-center gap-3 text-amber-200 text-sm min-w-0">
@@ -661,6 +656,101 @@ const AdminShell: React.FC<{ onClose: () => void; onLogout: () => void; onDataCh
                 </div>
               </div>
 
+              <div className={`${card} p-5 sm:p-6`}>
+                <div className="flex flex-wrap items-start justify-between gap-3">
+                  <div>
+                    <h3 className="font-serif text-2xl">Intervalos programados</h3>
+                    <p className="text-sm text-white/45 mt-1 max-w-xl">
+                      Pausas que se repetem, como o almoço. Os clientes não conseguem marcar nenhum serviço que encoste nesse período.
+                    </p>
+                  </div>
+                  {breaks.length > 0 && (
+                    <button type="button" onClick={() => addBreak()} disabled={breaks.length >= 10} className={btnGhost}>
+                      <Plus className="w-4 h-4" /> Novo intervalo
+                    </button>
+                  )}
+                </div>
+
+                {breaks.length === 0 ? (
+                  <div className="mt-5 border border-dashed border-white/15 p-6 text-center">
+                    <Clock className="w-7 h-7 mx-auto text-white/25" />
+                    <p className="mt-3 text-sm text-white/50">Nenhum intervalo configurado.</p>
+                    <button type="button" onClick={() => addBreak()} className={btnSolid + ' mt-4'}>
+                      <Plus className="w-4 h-4" /> Adicionar almoço (12h às 13h)
+                    </button>
+                  </div>
+                ) : (
+                  <ul className="mt-5 space-y-4">
+                    {breaks.map((b, i) => {
+                      const invalid = !b.start || !b.end || b.start >= b.end;
+                      const conflicts = breakConflicts(b);
+                      return (
+                        <li key={i} className="border border-white/10 bg-black/20 p-4 sm:p-5 space-y-4">
+                          <div className="grid grid-cols-2 sm:grid-cols-[1fr_8rem_8rem_auto] gap-3 items-end">
+                            <div className="col-span-2 sm:col-span-1">
+                              <label className={lbl} htmlFor={`br-l-${i}`}>Nome</label>
+                              <input id={`br-l-${i}`} value={b.label} maxLength={40} placeholder="Ex.: Almoço" onChange={(e) => updateBreak(i, { label: e.target.value })} className={inp} />
+                            </div>
+                            <div>
+                              <label className={lbl} htmlFor={`br-s-${i}`}>Das</label>
+                              <input id={`br-s-${i}`} type="time" value={b.start} onChange={(e) => updateBreak(i, { start: e.target.value })} className={inp} />
+                            </div>
+                            <div>
+                              <label className={lbl} htmlFor={`br-e-${i}`}>Até</label>
+                              <input id={`br-e-${i}`} type="time" value={b.end} onChange={(e) => updateBreak(i, { end: e.target.value })} className={inp} />
+                            </div>
+                            <div className="col-span-2 sm:col-span-1 flex sm:block justify-end">
+                              <ConfirmDelete label="Remover" onConfirm={() => removeBreak(i)} />
+                            </div>
+                          </div>
+
+                          <div>
+                            <p className={lbl}>Repete em</p>
+                            <div className="flex flex-wrap gap-2">
+                              {WEEK_ORDER.map((wd) => {
+                                const on = b.days.includes(wd);
+                                const off = offDays.includes(wd);
+                                return (
+                                  <button
+                                    key={wd}
+                                    type="button"
+                                    aria-pressed={on}
+                                    onClick={() => toggleBreakDay(i, wd)}
+                                    title={off ? `${WEEK_LONG[wd]} é folga` : WEEK_LONG[wd]}
+                                    className={`h-9 min-w-[3rem] px-3 border text-[11px] uppercase tracking-[0.12em] font-semibold cursor-pointer transition-colors ${
+                                      on ? 'bg-white text-black border-white' : 'border-white/15 text-white/55 hover:border-white/40 hover:text-white'
+                                    } ${off ? 'opacity-45' : ''}`}
+                                  >
+                                    {WEEK_SHORT[wd]}
+                                  </button>
+                                );
+                              })}
+                              <button
+                                type="button"
+                                onClick={() => updateBreak(i, { days: openDays })}
+                                className="h-9 px-3 text-[11px] uppercase tracking-[0.12em] text-white/50 hover:text-white underline underline-offset-4 cursor-pointer"
+                              >
+                                Todos os dias abertos
+                              </button>
+                            </div>
+                          </div>
+
+                          {invalid && <p className="text-xs text-rose-300">O fim do intervalo precisa ser depois do início.</p>}
+                          {!invalid && b.days.length === 0 && <p className="text-xs text-rose-300">Escolha ao menos um dia da semana.</p>}
+                          {!invalid && conflicts > 0 && (
+                            <p className="text-xs text-amber-200 leading-relaxed">
+                              Atenção: {conflicts} agendamento{conflicts > 1 ? 's' : ''} futuro{conflicts > 1 ? 's' : ''} já marcado{conflicts > 1 ? 's' : ''} cai{conflicts > 1 ? 'em' : ''} dentro desse intervalo e
+                              continua{conflicts > 1 ? 'm' : ''} valendo. Remarque ou cancele pela Agenda, se for o caso.
+                            </p>
+                          )}
+                        </li>
+                      );
+                    })}
+                  </ul>
+                )}
+                <p className="mt-4 text-xs text-white/40">Lembre de tocar em “Salvar horários” para valer na agenda dos clientes.</p>
+              </div>
+
               <div className={`sticky bottom-20 md:bottom-4 z-10 flex items-center justify-between gap-4 p-4 border backdrop-blur-md transition-colors ${dirty ? 'bg-[#1b1b20]/95 border-white/30' : 'bg-[#141417]/80 border-white/[0.08]'}`}>
                 <p className="text-sm text-white/60">{dirty ? 'Você tem alterações não salvas.' : 'Horários atualizados.'}</p>
                 <button onClick={saveSettings} disabled={!dirty} className={btnSolid}><Save className="w-4 h-4" />Salvar horários</button>
@@ -755,36 +845,62 @@ const AdminShell: React.FC<{ onClose: () => void; onLogout: () => void; onDataCh
           )}
 
           {/* ───────── CLIENTES ───────── */}
-          {!loading && tab === 'clientes' && (
-            <section>
-              <PageHead title="Clientes" subtitle={`${clients.length} cliente(s) cadastrados pelos agendamentos`} />
-              <div className="relative mb-5">
-                <Search className="w-4 h-4 absolute left-4 top-1/2 -translate-y-1/2 text-white/35" />
-                <input value={clientQuery} onChange={(e) => setClientQuery(e.target.value)} placeholder="Buscar por nome ou telefone" className={inp + ' !h-12 pl-11'} aria-label="Buscar cliente" />
-              </div>
-              {filteredClients.length === 0 ? (
-                <div className={`${card} py-14 text-center text-white/45`}><Users className="w-8 h-8 mx-auto text-white/25 mb-3" />Nenhum cliente encontrado.</div>
-              ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                  {filteredClients.map((c) => {
-                    const fav = Object.entries(c.fav).sort((a, b) => b[1] - a[1])[0]?.[0];
-                    return (
-                      <article key={c.phone} className={`${card} p-4 sm:p-5 flex items-center gap-4`}>
-                        <span className="w-12 h-12 shrink-0 rounded-full bg-white/[0.07] border border-white/10 flex items-center justify-center font-serif text-lg">{initials(c.name)}</span>
-                        <div className="flex-1 min-w-0">
-                          <h3 className="font-semibold truncate">{c.name}</h3>
-                          <p className="text-xs text-white/45">{fmtPhone(c.phone)}</p>
-                          <p className="mt-1.5 text-xs text-white/60">{c.visits} visita(s) · <span className="text-white">{brl(c.spent)}</span> · última {shortBR(c.last)}</p>
-                          {fav && <p className="text-[11px] text-white/40 truncate">Favorito: {fav}</p>}
-                        </div>
-                        <a href={`https://wa.me/55${c.phone.replace(/\D/g, '')}`} target="_blank" rel="noopener noreferrer" className={btnGhost + ' !px-3'} aria-label={`WhatsApp de ${c.name}`}><MessageCircle className="w-4 h-4" /></a>
-                      </article>
-                    );
-                  })}
+          {!loading && tab === 'clientes' && (() => {
+            const selApts = clientSel ? appointments.filter((a) => a.clientPhone === clientSel) : [];
+            if (clientSel && selApts.length > 0) {
+              return (
+                <ClientHistory
+                  phone={clientSel}
+                  appointments={selApts}
+                  busy={busyAction}
+                  onBack={() => setClientSel(null)}
+                  onSetStatus={setStatus}
+                  onDeleteAppointment={deleteAppointment}
+                  onCancelFuture={() => cancelClientFuture(clientSel)}
+                  onDeleteClient={() => deleteClient(clientSel)}
+                  onUpdateClient={(name, newPhone) => updateClient(clientSel, name, newPhone)}
+                />
+              );
+            }
+            return (
+              <section>
+                <PageHead title="Clientes" subtitle={`${clients.length} cliente(s) cadastrados pelos agendamentos`} />
+                <div className="relative mb-5">
+                  <Search className="w-4 h-4 absolute left-4 top-1/2 -translate-y-1/2 text-white/35" />
+                  <input value={clientQuery} onChange={(e) => setClientQuery(e.target.value)} placeholder="Buscar por nome ou telefone" className={inp + ' !h-12 pl-11'} aria-label="Buscar cliente" />
                 </div>
-              )}
-            </section>
-          )}
+                {filteredClients.length === 0 ? (
+                  <div className={`${card} py-14 text-center text-white/45`}><Users className="w-8 h-8 mx-auto text-white/25 mb-3" />Nenhum cliente encontrado.</div>
+                ) : (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    {filteredClients.map((c) => {
+                      const fav = Object.entries(c.fav).sort((a, b) => b[1] - a[1])[0]?.[0];
+                      return (
+                        <article key={c.phone} className={`${card} flex items-center gap-2 pr-4 sm:pr-5 hover:border-white/25 transition-colors`}>
+                          <button
+                            type="button"
+                            onClick={() => setClientSel(c.phone)}
+                            aria-label={`Ver histórico de ${c.name}`}
+                            className="flex-1 min-w-0 p-4 sm:p-5 flex items-center gap-4 text-left cursor-pointer"
+                          >
+                            <span className="w-12 h-12 shrink-0 rounded-full bg-white/[0.07] border border-white/10 flex items-center justify-center font-serif text-lg">{initials(c.name)}</span>
+                            <span className="flex-1 min-w-0">
+                              <span className="block font-semibold truncate">{c.name}</span>
+                              <span className="block text-xs text-white/45">{fmtPhone(c.phone)}</span>
+                              <span className="block mt-1.5 text-xs text-white/60">{c.visits} visita(s) · <span className="text-white">{brl(c.spent)}</span> · última {shortBR(c.last)}</span>
+                              {fav && <span className="block text-[11px] text-white/40 truncate">Favorito: {fav}</span>}
+                            </span>
+                            <ChevronRight className="w-4 h-4 shrink-0 text-white/30" />
+                          </button>
+                          <a href={`https://wa.me/55${c.phone.replace(/\D/g, '')}`} target="_blank" rel="noopener noreferrer" className={btnGhost + ' !px-3'} aria-label={`WhatsApp de ${c.name}`}><MessageCircle className="w-4 h-4" /></a>
+                        </article>
+                      );
+                    })}
+                  </div>
+                )}
+              </section>
+            );
+          })()}
 
           {/* ───────── RESUMO ───────── */}
           {!loading && tab === 'resumo' && (
