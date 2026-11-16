@@ -7,11 +7,11 @@
 import { supabase, supabaseEnabled } from '../lib/supabase';
 import {
   Service, Appointment, BlockedSlot, BarberSettings, DEFAULT_BARBER_SETTINGS,
-  isSlotFreeForDuration, generateBookingCode, canRescheduleOrCancel, todayStr,
+  isSlotFreeForDuration, generateBookingCode, canRescheduleOrCancel, todayStr, isValidPhone,
 } from '../utils/bookingLogic';
 import {
   getStoredAppointments, saveAppointment, updateAppointmentStatus, getStoredServices, saveServices,
-  getStoredBlockedSlots, saveBlockedSlots, getStoredBarberSettings, saveBarberSettings,
+  getStoredBlockedSlots, saveBlockedSlots, getStoredBarberSettings, saveBarberSettings, setStoredAppointments,
 } from '../utils/storage';
 import { isLoggedIn } from '../utils/adminAuth';
 
@@ -40,6 +40,7 @@ const MESSAGES: Record<string, string> = {
   invalid_hours: 'O horário de fechamento precisa ser depois da abertura.',
   invalid_interval: 'Intervalo inválido.',
   invalid_days: 'Dia da semana inválido.',
+  invalid_breaks: 'Confira os intervalos: o fim precisa ser depois do início, escolha ao menos um dia e use no máximo 10 intervalos.',
   invalid_range: 'O horário final precisa ser depois do inicial.',
   last_service: 'Mantenha pelo menos um serviço cadastrado.',
   forbidden: 'Acesso negado.',
@@ -106,7 +107,7 @@ export async function loadPublicData(): Promise<PublicData> {
   const d = await rpc<any>('get_public_data');
   return {
     services: d.services as Service[],
-    settings: { ...DEFAULT_BARBER_SETTINGS, ...d.settings, daySchedules: d.settings?.daySchedules || {} },
+    settings: { ...DEFAULT_BARBER_SETTINGS, ...d.settings, daySchedules: d.settings?.daySchedules || {}, breaks: d.settings?.breaks || [] },
     busy: (d.busy || []).map(asBusy),
     blocked: (d.blocked || []).map((b: any) => ({
       id: b.id, dateStr: b.dateStr, timeStr: b.timeStr || undefined, endTimeStr: b.endTimeStr || undefined, reason: b.reason || '',
@@ -233,6 +234,59 @@ export async function adminLoad(): Promise<AdminData> {
 export async function adminSetStatus(id: string, status: Appointment['status']): Promise<void> {
   if (dataMode === 'supabase') return void (await rpc('admin_set_status', { p_id: id, p_status: status }));
   updateAppointmentStatus(id, status);
+}
+
+/* ───────────── clientes (painel do barbeiro) ───────────── */
+
+/** Remove UM agendamento do histórico. */
+export async function adminDeleteAppointment(id: string): Promise<void> {
+  if (dataMode === 'supabase') return void (await rpc('admin_delete_appointment', { p_id: id }));
+  setStoredAppointments(getStoredAppointments().filter((a) => a.id !== id));
+}
+
+/** Cancela todos os horários futuros ainda confirmados do cliente. Devolve quantos foram cancelados. */
+export async function adminCancelClientFuture(phone: string): Promise<number> {
+  if (dataMode === 'supabase') return (await rpc<number>('admin_cancel_client_future', { p_phone: phone })) ?? 0;
+  const p = cleanPhone(phone);
+  const n = new Date();
+  const now = `${todayStr(n)} ${String(n.getHours()).padStart(2, '0')}:${String(n.getMinutes()).padStart(2, '0')}`;
+  let count = 0;
+  setStoredAppointments(
+    getStoredAppointments().map((a) => {
+      if (a.clientPhone === p && a.status === 'confirmed' && `${a.dateStr} ${a.timeStr}` >= now) {
+        count += 1;
+        return { ...a, status: 'cancelled' as const };
+      }
+      return a;
+    })
+  );
+  return count;
+}
+
+/** Exclui o cliente: apaga TODOS os agendamentos do WhatsApp. Devolve quantos foram apagados. */
+export async function adminDeleteClient(phone: string): Promise<number> {
+  if (dataMode === 'supabase') return (await rpc<number>('admin_delete_client', { p_phone: phone })) ?? 0;
+  const p = cleanPhone(phone);
+  const all = getStoredAppointments();
+  const rest = all.filter((a) => a.clientPhone !== p);
+  if (rest.length === all.length) throw new ApiError('not_found');
+  setStoredAppointments(rest);
+  return all.length - rest.length;
+}
+
+/** Corrige nome e/ou WhatsApp do cliente em todo o histórico. WhatsApp que já existe em outro cliente une os históricos. */
+export async function adminUpdateClient(phone: string, name: string, newPhone?: string): Promise<void> {
+  if (dataMode === 'supabase') {
+    return void (await rpc('admin_update_client', { p_phone: phone, p_name: name, p_new_phone: newPhone ?? null }));
+  }
+  const ph = cleanPhone(phone);
+  const np = cleanPhone(newPhone || '') || ph;
+  const nm = name.trim();
+  if (nm.length < 2 || nm.length > 80) throw new ApiError('invalid_name');
+  if (!isValidPhone(np)) throw new ApiError('invalid_phone');
+  const all = getStoredAppointments();
+  if (!all.some((a) => a.clientPhone === ph)) throw new ApiError('not_found');
+  setStoredAppointments(all.map((a) => (a.clientPhone === ph || a.clientPhone === np ? { ...a, clientName: nm, clientPhone: np } : a)));
 }
 
 export async function adminSaveSettings(settings: BarberSettings): Promise<void> {
