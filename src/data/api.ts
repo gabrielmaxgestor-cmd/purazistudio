@@ -7,7 +7,7 @@
 import { supabase, supabaseEnabled } from '../lib/supabase';
 import {
   Service, Appointment, BlockedSlot, BarberSettings, DEFAULT_BARBER_SETTINGS,
-  isSlotFreeForDuration, generateBookingCode, canRescheduleOrCancel, todayStr, isValidPhone,
+  isSlotFreeForDuration, generateBookingCode, canRescheduleOrCancel, todayStr, isValidPhone, isClosedForReopen,
 } from '../utils/bookingLogic';
 import {
   getStoredAppointments, saveAppointment, updateAppointmentStatus, getStoredServices, saveServices,
@@ -40,6 +40,7 @@ const MESSAGES: Record<string, string> = {
   invalid_hours: 'O horário de fechamento precisa ser depois da abertura.',
   invalid_interval: 'Intervalo inválido.',
   invalid_days: 'Dia da semana inválido.',
+  locked: 'Este atendimento já foi encerrado (12h depois do horário) e não pode ser reaberto.',
   invalid_breaks: 'Confira os intervalos: o fim precisa ser depois do início, escolha ao menos um dia e use no máximo 10 intervalos.',
   invalid_range: 'O horário final precisa ser depois do inicial.',
   last_service: 'Mantenha pelo menos um serviço cadastrado.',
@@ -173,9 +174,10 @@ export async function lookupAppointments(code: string, phone: string): Promise<A
   const found = await lookupAppointment(code, phone);
   if (!found) return null;
   const p = cleanPhone(phone);
-  const today = todayStr();
+  const d = new Date();
+  const now = `${todayStr(d)} ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
   const others = getStoredAppointments()
-    .filter((a) => a.clientPhone === p && a.status === 'confirmed' && a.id !== found.id && a.dateStr >= today)
+    .filter((a) => a.clientPhone === p && a.status === 'confirmed' && a.id !== found.id && `${a.dateStr} ${a.timeStr}` >= now)
     .sort((a, b) => `${a.dateStr} ${a.timeStr}`.localeCompare(`${b.dateStr} ${b.timeStr}`))
     .slice(0, 10);
   return [found, ...others];
@@ -233,6 +235,10 @@ export async function adminLoad(): Promise<AdminData> {
 
 export async function adminSetStatus(id: string, status: Appointment['status']): Promise<void> {
   if (dataMode === 'supabase') return void (await rpc('admin_set_status', { p_id: id, p_status: status }));
+  if (status === 'confirmed') {
+    const found = getStoredAppointments().find((a) => a.id === id);
+    if (found && isClosedForReopen(found.dateStr, found.timeStr)) throw new ApiError('locked');
+  }
   updateAppointmentStatus(id, status);
 }
 
