@@ -464,9 +464,25 @@ export const ConsultAppointmentModal: React.FC<ConsultAppointmentModalProps> = (
                     </button>
                   </>
                 ) : (
-                  <p className="text-[11px] text-amber-200/90 bg-amber-950/30 border border-amber-800/40 p-2.5 text-center w-full">
-                    Este agendamento ocorre em menos de 12 horas. Remarcações e cancelamentos só podem ser solicitados diretamente pelo WhatsApp.
-                  </p>
+                  <div className="w-full space-y-2.5">
+                    <p className="text-[11px] leading-relaxed text-amber-200/90 bg-amber-950/30 border border-amber-800/40 p-2.5 text-center">
+                      {new Date(`${foundAppointment.dateStr}T${foundAppointment.timeStr}:00`).getTime() <= Date.now()
+                        ? 'Este horário já passou.'
+                        : 'Este agendamento ocorre em menos de 12 horas.'}{' '}
+                      Cancelamentos e remarcações só podem ser feitos até 12 horas antes. Para qualquer ajuste, fale diretamente com o barbeiro.
+                    </p>
+                    <a
+                      href={whatsappLink(
+                        `Olá! Preciso falar sobre o meu agendamento ${foundAppointment.code} (${shortDate(foundAppointment.dateStr)} às ${foundAppointment.timeStr}) no PURAZI Studio. Meu nome é ${foundAppointment.clientName}.`
+                      )}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex items-center justify-center gap-2 w-full bg-emerald-400 hover:bg-emerald-300 text-black py-2.5 px-3 text-xs uppercase tracking-wider font-bold transition-colors"
+                    >
+                      <MessageCircle className="w-4 h-4" />
+                      Falar com o barbeiro
+                    </a>
+                  </div>
                 )}
               </div>
             )}
