@@ -10,6 +10,8 @@ import {
   isSlotFreeForDuration,
   isValidPhone,
   getDayBreaks,
+  isClosedForReopen,
+  effectiveStatus,
   canRescheduleOrCancel,
   INITIAL_SERVICES,
   Appointment,
@@ -263,4 +265,37 @@ test('o intervalo convive com agendamentos e bloqueios existentes', () => {
   const apts = [{ id: '1', code: 'PRZ-1', clientName: 'A', clientPhone: '24981234567', serviceId: 'corte', serviceName: 'Corte', price: 55, durationMinutes: 45, dateStr: '2026-10-26', timeStr: '13:30', status: 'confirmed', createdAt: '' }] as Appointment[];
   assert.equal(isSlotFreeForDuration('2026-10-26', '13:30', 45, apts, [], st), false, 'ocupado');
   assert.equal(isSlotFreeForDuration('2026-10-26', '14:15', 45, apts, [], st), true);
+});
+
+
+/* ───────── Regras de 12h: conclusão automática e cancelamento ───────── */
+
+test('encerra exatamente 12h depois do horário marcado (não antes)', () => {
+  // atendimento 26/10 às 10:00
+  assert.equal(isClosedForReopen('2026-10-26', '10:00', new Date(2026, 9, 26, 21, 59)), false, '11h59 depois: ainda pode reabrir');
+  assert.equal(isClosedForReopen('2026-10-26', '10:00', new Date(2026, 9, 26, 22, 0)), true, '12h exatas: encerrado');
+  assert.equal(isClosedForReopen('2026-10-26', '10:00', new Date(2026, 9, 27, 8, 0)), true);
+  assert.equal(isClosedForReopen('2026-10-26', '10:00', new Date(2026, 9, 26, 9, 0)), false, 'antes do horário');
+});
+
+test('situação efetiva: só "confirmado" vira "concluído" depois de 12h', () => {
+  const depois = new Date(2026, 9, 27, 10, 0);
+  const antes = new Date(2026, 9, 26, 15, 0);
+  const base = { dateStr: '2026-10-26', timeStr: '10:00' };
+  assert.equal(effectiveStatus({ ...base, status: 'confirmed' }, depois), 'completed');
+  assert.equal(effectiveStatus({ ...base, status: 'confirmed' }, antes), 'confirmed');
+  assert.equal(effectiveStatus({ ...base, status: 'cancelled' }, depois), 'cancelled', 'cancelado nunca vira concluído');
+  assert.equal(effectiveStatus({ ...base, status: 'completed' }, antes), 'completed');
+});
+
+test('cancelamento pelo cliente: só com 12h ou mais de antecedência', () => {
+  // atendimento 27/10 às 10:00
+  const ok = canRescheduleOrCancel('2026-10-27', '10:00', new Date(2026, 9, 26, 22, 0), 12);
+  assert.equal(ok.allowed, true, 'exatamente 12h antes ainda pode');
+  const tarde = canRescheduleOrCancel('2026-10-27', '10:00', new Date(2026, 9, 26, 22, 1), 12);
+  assert.equal(tarde.allowed, false, '11h59 antes: não pode');
+  assert.match(tarde.reason ?? '', /WhatsApp/);
+  const passou = canRescheduleOrCancel('2026-10-27', '10:00', new Date(2026, 9, 27, 10, 1), 12);
+  assert.equal(passou.allowed, false);
+  assert.match(passou.reason ?? '', /barbeiro/);
 });
