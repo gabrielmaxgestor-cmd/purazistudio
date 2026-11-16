@@ -362,6 +362,25 @@ export function formatWhatsAppBookingMessage(appointment: Appointment): string {
   );
 }
 
+/** Horas depois do horário marcado em que o atendimento é concluído sozinho e não pode mais ser reaberto. */
+export const AUTO_COMPLETE_AFTER_HOURS = 12;
+
+const startMs = (dateStr: string, timeStr: string) => {
+  const [y, m, d] = dateStr.split('-').map(Number);
+  const [hh, mm] = timeStr.split(':').map(Number);
+  return new Date(y, m - 1, d, hh, mm).getTime();
+};
+
+/** Já se passaram 12h do horário marcado? (atendimento encerrado: conclui sozinho e não reabre) */
+export function isClosedForReopen(dateStr: string, timeStr: string, now: Date = new Date()): boolean {
+  return now.getTime() >= startMs(dateStr, timeStr) + AUTO_COMPLETE_AFTER_HOURS * 3600_000;
+}
+
+/** Situação "de verdade": confirmado há mais de 12h do horário vira concluído. */
+export function effectiveStatus(a: { status: Appointment['status']; dateStr: string; timeStr: string }, now: Date = new Date()): Appointment['status'] {
+  return a.status === 'confirmed' && isClosedForReopen(a.dateStr, a.timeStr, now) ? 'completed' : a.status;
+}
+
 /**
  * Checks if an appointment can be cancelled/rescheduled based on minimum notice hours (default 12 hours)
  */
@@ -379,7 +398,7 @@ export function canRescheduleOrCancel(
   const diffHours = diffMs / (1000 * 60 * 60);
 
   if (diffHours < 0) {
-    return { allowed: false, reason: 'Este agendamento já ocorreu ou expirou.' };
+    return { allowed: false, reason: 'Este horário já passou. Para qualquer ajuste, fale diretamente com o barbeiro pelo WhatsApp.' };
   }
 
   if (diffHours < minHoursNotice) {
