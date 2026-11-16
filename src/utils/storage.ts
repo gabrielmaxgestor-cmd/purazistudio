@@ -61,6 +61,10 @@ export function saveAppointment(appointment: Appointment): Appointment[] {
   return updated;
 }
 
+export function setStoredAppointments(list: Appointment[]): void {
+  localStorage.setItem(STORAGE_KEYS.APPOINTMENTS, JSON.stringify(list));
+}
+
 export function updateAppointmentStatus(id: string, status: 'confirmed' | 'completed' | 'cancelled'): Appointment[] {
   const current = getStoredAppointments();
   const updated = current.map(a => a.id === id ? { ...a, status } : a);
@@ -111,7 +115,7 @@ export function getStoredBarberSettings(): BarberSettings {
       return DEFAULT_BARBER_SETTINGS;
     }
     const parsed = JSON.parse(data);
-    return { ...DEFAULT_BARBER_SETTINGS, ...parsed, daySchedules: parsed.daySchedules || {} };
+    return { ...DEFAULT_BARBER_SETTINGS, ...parsed, daySchedules: parsed.daySchedules || {}, breaks: Array.isArray(parsed.breaks) ? parsed.breaks : [] };
   } catch {
     return DEFAULT_BARBER_SETTINGS;
   }
