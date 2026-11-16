@@ -5,6 +5,7 @@ import {
   INITIAL_SERVICES,
   BarberSettings,
   DEFAULT_BARBER_SETTINGS,
+  effectiveStatus,
 } from './bookingLogic';
 
 const STORAGE_KEYS = {
@@ -48,7 +49,20 @@ export function getStoredAppointments(): Appointment[] {
       localStorage.setItem(STORAGE_KEYS.APPOINTMENTS, JSON.stringify(INITIAL_APPOINTMENTS));
       return INITIAL_APPOINTMENTS;
     }
-    return JSON.parse(data);
+    const list: Appointment[] = JSON.parse(data);
+    // 12h depois do horário marcado, o atendimento confirmado passa a concluído (e grava)
+    const now = new Date();
+    let changed = false;
+    const fixed = list.map((a) => {
+      const st = effectiveStatus(a, now);
+      if (st !== a.status) {
+        changed = true;
+        return { ...a, status: st };
+      }
+      return a;
+    });
+    if (changed) localStorage.setItem(STORAGE_KEYS.APPOINTMENTS, JSON.stringify(fixed));
+    return fixed;
   } catch {
     return INITIAL_APPOINTMENTS;
   }
