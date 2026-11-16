@@ -34,6 +34,14 @@ export interface BlockedSlot {
   reason: string;
 }
 
+/** Pausa que se repete nos dias da semana (ex.: almoço todo dia das 12:00 às 13:00). */
+export interface BreakRule {
+  start: string; // HH:MM
+  end: string; // HH:MM (exclusivo)
+  days: number[]; // 0 = Domingo ... 6 = Sábado
+  label: string; // ex.: "Almoço"
+}
+
 export interface BarberSettings {
   fixedOffDays: number[]; // 0 = Domingo, 1 = Segunda, 2 = Terça, 3 = Quarta, 4 = Quinta, 5 = Sexta, 6 = Sábado
   workStart: string; // HH:MM e.g. '09:00'
@@ -44,6 +52,8 @@ export interface BarberSettings {
    * Dias sem entrada usam workStart/workEnd. Dias em fixedOffDays continuam sendo folga total.
    */
   daySchedules?: Record<number, { start: string; end: string }>;
+  /** Intervalos programados que se repetem (almoço etc.). Nenhum serviço pode encostar neles. */
+  breaks?: BreakRule[];
 }
 
 export const DEFAULT_BARBER_SETTINGS: BarberSettings = {
@@ -52,6 +62,7 @@ export const DEFAULT_BARBER_SETTINGS: BarberSettings = {
   workEnd: '20:00',
   intervalMinutes: 45,
   daySchedules: {},
+  breaks: [],
 };
 
 /** Data de hoje no fuso LOCAL em YYYY-MM-DD (toISOString usa UTC e vira "amanhã" depois das 21h no Brasil). */
@@ -77,6 +88,12 @@ export function getDaySchedule(
   const custom = settings.daySchedules?.[wd];
   if (custom && custom.start && custom.end) return { start: custom.start, end: custom.end };
   return { start: settings.workStart, end: settings.workEnd };
+}
+
+/** Intervalos programados que valem para o dia da semana desta data. */
+export function getDayBreaks(dateStr: string, settings: BarberSettings = DEFAULT_BARBER_SETTINGS): BreakRule[] {
+  const wd = weekdayOf(dateStr);
+  return (settings.breaks || []).filter((b) => Array.isArray(b.days) && b.days.includes(wd) && !!b.start && !!b.end && b.start < b.end);
 }
 
 export interface DayOption {
@@ -263,6 +280,9 @@ export function isTimeSlotAvailable(
   });
   if (isSlotBlocked) return false;
 
+  // Intervalo programado (almoço etc.)
+  if (getDayBreaks(dateStr, activeSettings).some((b) => timeStr >= b.start && timeStr < b.end)) return false;
+
   // Check if already booked with active appointment
   const isBooked = appointments.some(
     a => a.dateStr === dateStr && a.timeStr === timeStr && a.status === 'confirmed'
@@ -306,6 +326,9 @@ export function isSlotFreeForDuration(
     const bs = toMin(b.timeStr);
     const be = b.endTimeStr ? toMin(b.endTimeStr) : bs + (active.intervalMinutes || 45);
     if (start < be && end > bs) return false;
+  }
+  for (const br of getDayBreaks(dateStr, active)) {
+    if (start < toMin(br.end) && end > toMin(br.start)) return false;
   }
   return true;
 }
