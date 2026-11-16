@@ -1,6 +1,6 @@
 import React, { useMemo, useState } from 'react';
 import { CheckCircle2, ChevronLeft, MessageCircle, Pencil, RotateCcw, XCircle } from 'lucide-react';
-import { Appointment, todayStr } from '../utils/bookingLogic';
+import { Appointment, todayStr, isClosedForReopen } from '../utils/bookingLogic';
 import { STATUS, ConfirmDelete, brl, parseDate, fmtPhone, initials, card, inp, lbl, btnGhost, btnSolid } from './adminUi';
 
 const maskPhone = (raw: string) => {
@@ -222,11 +222,19 @@ export const ClientHistory: React.FC<Props> = ({
                         <CheckCircle2 className="w-3.5 h-3.5" /> Concluir
                       </button>
                     )}
-                    {a.status !== 'confirmed' && (
-                      <button type="button" disabled={busy} onClick={() => onSetStatus(a.id, 'confirmed')} className={btnGhost + ' !h-9 !px-3 !text-[11px]'}>
-                        <RotateCcw className="w-3.5 h-3.5" /> Reabrir
-                      </button>
-                    )}
+                    {a.status !== 'confirmed' &&
+                      (isClosedForReopen(a.dateStr, a.timeStr) ? (
+                        <span
+                          className="inline-flex items-center h-9 px-3 text-[11px] uppercase tracking-[0.14em] text-white/35 border border-white/10"
+                          title="12h depois do horário marcado o atendimento é encerrado e não pode ser reaberto"
+                        >
+                          Encerrado
+                        </span>
+                      ) : (
+                        <button type="button" disabled={busy} onClick={() => onSetStatus(a.id, 'confirmed')} className={btnGhost + ' !h-9 !px-3 !text-[11px]'}>
+                          <RotateCcw className="w-3.5 h-3.5" /> Reabrir
+                        </button>
+                      ))}
                     <ConfirmDelete label="Excluir" disabled={busy} onConfirm={() => onDeleteAppointment(a.id)} />
                   </div>
                 </article>
