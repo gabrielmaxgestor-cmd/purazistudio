@@ -9,6 +9,7 @@ import {
   isTimeSlotAvailable,
   isSlotFreeForDuration,
   isValidPhone,
+  getDayBreaks,
   canRescheduleOrCancel,
   INITIAL_SERVICES,
   Appointment,
@@ -184,4 +185,82 @@ test('isSlotFreeForDuration impede sobreposição e serviço que passa do fecham
   assert.equal(isSlotFreeForDuration('2026-10-26', '09:45', 45, apts, [], settings), true);
   // 11:15 + 75min passaria das 12:00
   assert.equal(isSlotFreeForDuration('2026-11-17', '11:15', 75, [], [], settings), false);
+});
+
+
+/* ───────── Intervalos programados (almoço etc.) ─────────
+ * Datas fixas no passado (nunca "hoje"): 2026-10-26 é segunda, 2026-10-31 é sábado, 2026-11-01 é domingo.
+ */
+const lunch = (over: Partial<BarberSettings> = {}): BarberSettings => ({
+  fixedOffDays: [0],
+  workStart: '09:00',
+  workEnd: '20:00',
+  intervalMinutes: 45,
+  daySchedules: {},
+  breaks: [{ start: '12:00', end: '13:00', days: [1, 2, 3, 4, 5, 6], label: 'Almoço' }],
+  ...over,
+});
+
+test('intervalo: horário de início dentro do almoço não fica disponível', () => {
+  const st = lunch();
+  assert.equal(isTimeSlotAvailable('2026-10-26', '12:00', [], [], st), false);
+  assert.equal(isTimeSlotAvailable('2026-10-26', '12:45', [], [], st), false);
+  assert.equal(isTimeSlotAvailable('2026-10-26', '11:15', [], [], st), true);
+  assert.equal(isTimeSlotAvailable('2026-10-26', '13:00', [], [], st), true, 'o fim do intervalo é exclusivo');
+});
+
+test('intervalo: o serviço inteiro não pode invadir o almoço', () => {
+  const st = lunch();
+  // 11:15 + 45min termina às 12:00: só encosta, pode
+  assert.equal(isSlotFreeForDuration('2026-10-26', '11:15', 45, [], [], st), true);
+  // 11:15 + 75min (combo) termina 12:30: invade
+  assert.equal(isSlotFreeForDuration('2026-10-26', '11:15', 75, [], [], st), false);
+  // 12:45 + 45min começa antes de 13:00 mas está dentro do almoço
+  assert.equal(isSlotFreeForDuration('2026-10-26', '12:45', 45, [], [], st), false);
+  // 13:00 em diante volta ao normal
+  assert.equal(isSlotFreeForDuration('2026-10-26', '13:00', 45, [], [], st), true);
+});
+
+test('intervalo vale só nos dias escolhidos', () => {
+  const st = lunch({ breaks: [{ start: '12:00', end: '13:00', days: [6], label: 'Almoço sábado' }] });
+  assert.equal(isSlotFreeForDuration('2026-10-26', '12:00', 45, [], [], st), true, 'segunda não tem intervalo');
+  assert.equal(isSlotFreeForDuration('2026-10-31', '12:00', 45, [], [], st), false, 'sábado tem');
+});
+
+test('sem intervalos configurados nada muda (inclui configuração antiga sem o campo)', () => {
+  const antigo = { fixedOffDays: [0], workStart: '09:00', workEnd: '20:00', intervalMinutes: 45, daySchedules: {} } as BarberSettings;
+  assert.equal(isSlotFreeForDuration('2026-10-26', '12:00', 45, [], [], antigo), true);
+  assert.equal(isSlotFreeForDuration('2026-10-26', '12:00', 45, [], [], lunch({ breaks: [] })), true);
+});
+
+test('vários intervalos no mesmo dia (almoço + café) são respeitados', () => {
+  const st = lunch({
+    breaks: [
+      { start: '12:00', end: '13:00', days: [1], label: 'Almoço' },
+      { start: '16:00', end: '16:30', days: [1], label: 'Café' },
+    ],
+  });
+  assert.equal(isSlotFreeForDuration('2026-10-26', '16:00', 15, [], [], st), false, 'dentro do café');
+  assert.equal(isSlotFreeForDuration('2026-10-26', '15:15', 45, [], [], st), true, '15:15 + 45min termina às 16:00: só encosta');
+  assert.equal(isSlotFreeForDuration('2026-10-26', '15:30', 45, [], [], st), false, 'termina 16:15: invade o café');
+  assert.equal(isSlotFreeForDuration('2026-10-26', '16:30', 45, [], [], st), true, 'depois do café');
+});
+
+test('getDayBreaks ignora intervalos malformados e de outros dias', () => {
+  const st = lunch({
+    breaks: [
+      { start: '13:00', end: '12:00', days: [1], label: 'invertido' },
+      { start: '12:00', end: '13:00', days: [], label: 'sem dias' },
+      { start: '12:00', end: '13:00', days: [1], label: 'ok' },
+      { start: '15:00', end: '16:00', days: [2], label: 'terça' },
+    ],
+  });
+  assert.deepEqual(getDayBreaks('2026-10-26', st).map((b) => b.label), ['ok']);
+});
+
+test('o intervalo convive com agendamentos e bloqueios existentes', () => {
+  const st = lunch();
+  const apts = [{ id: '1', code: 'PRZ-1', clientName: 'A', clientPhone: '24981234567', serviceId: 'corte', serviceName: 'Corte', price: 55, durationMinutes: 45, dateStr: '2026-10-26', timeStr: '13:30', status: 'confirmed', createdAt: '' }] as Appointment[];
+  assert.equal(isSlotFreeForDuration('2026-10-26', '13:30', 45, apts, [], st), false, 'ocupado');
+  assert.equal(isSlotFreeForDuration('2026-10-26', '14:15', 45, apts, [], st), true);
 });
