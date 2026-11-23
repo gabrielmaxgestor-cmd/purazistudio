@@ -10,6 +10,7 @@ import { MagneticButton } from './components/MagneticButton';
 import { DoubtsSection } from './components/DoubtsSection';
 import { CutsShowcase } from './components/CutsShowcase';
 import { LocationSection } from './components/LocationSection';
+import { MaxtrixCredit } from './components/MaxtrixCredit';
 import { SplitWords } from './components/SplitWords';
 import {
   Service, BarberSettings, DEFAULT_BARBER_SETTINGS,
@@ -421,6 +422,8 @@ export default function App() {
           <span>© {new Date().getFullYear()} PURAZI Studio. Todos os direitos reservados.</span>
           <span>Valença · RJ · Barbearia &amp; Visagismo</span>
         </div>
+
+        <MaxtrixCredit />
       </footer>
 
       {dataState === 'error' && (
