@@ -25,3 +25,15 @@ export const MAPS_EMBED = `https://www.google.com/maps?q=${encodeURIComponent(MA
 
 export const whatsappLink = (text = 'Olá! Vim pelo site do PURAZI Studio.') =>
   `https://wa.me/${SITE.whatsappNumber}?text=${encodeURIComponent(text)}`;
+
+/** Assinatura da agência que produziu o site. */
+export const MAXTRIX = {
+  name: 'Maxtrix',
+  tagline: 'Soluções digitais para negócios',
+  instagramUrl: 'https://www.instagram.com/amaxtrix',
+  whatsappNumber: '5524998360773',
+};
+
+export const maxtrixWhatsappLink = (
+  text = 'Olá! Vi o site da Purazi Studio e quero saber mais sobre as soluções da Maxtrix.',
+) => `https://wa.me/${MAXTRIX.whatsappNumber}?text=${encodeURIComponent(text)}`;
