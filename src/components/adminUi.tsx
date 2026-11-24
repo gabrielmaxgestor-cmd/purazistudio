@@ -34,7 +34,15 @@ export const countSlots = (start: string, end: string, interval: number) => {
 export const initials = (name: string) =>
   name.trim().split(/\s+/).slice(0, 2).map((p) => p[0]?.toUpperCase()).join('') || '?';
 
-export const card = 'bg-[#141417] border border-white/[0.08]';
+/* ───────────── Sistema visual do painel ─────────────
+   Três níveis de superfície, para o olho separar "página" de "bloco" de "item":
+   1. fundo da página  → #0a0a0c
+   2. Section (bloco)  → #121216 com faixa de cabeçalho, ícone e barra de cor na lateral
+   3. item dentro do bloco → card / cardInset (um tom mais claro / mais escuro)
+   E cada função tem uma cor própria (TONE), usada de forma consistente em todas as telas. */
+
+export const card = 'bg-[#17171c] border border-white/[0.09] shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]';
+export const cardInset = 'bg-black/25 border border-white/[0.07]';
 export const inp =
   'h-11 w-full bg-black/40 border border-white/10 focus:border-white/45 outline-none px-3 text-sm text-white placeholder:text-white/30 transition-colors';
 export const lbl = 'block text-[11px] uppercase tracking-[0.18em] text-white/45 mb-1.5';
@@ -42,12 +50,46 @@ export const btnGhost =
   'inline-flex items-center justify-center gap-2 h-10 px-4 border border-white/15 hover:border-white/40 hover:bg-white/5 text-xs uppercase tracking-[0.14em] font-semibold text-white/85 transition-colors cursor-pointer';
 export const btnSolid =
   'inline-flex items-center justify-center gap-2 h-11 px-6 bg-white text-black hover:bg-neutral-200 text-xs uppercase tracking-[0.16em] font-bold transition-colors cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed';
+export const btnSuccess =
+  'inline-flex items-center justify-center gap-1.5 h-10 px-4 bg-emerald-400 hover:bg-emerald-300 text-black text-xs uppercase tracking-[0.12em] font-bold transition-colors cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed';
+export const btnDangerGhost =
+  'inline-flex items-center justify-center gap-1.5 h-10 px-3 border border-white/15 hover:border-rose-400/50 hover:text-rose-300 text-xs uppercase tracking-[0.12em] font-semibold text-white/70 transition-colors cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed';
+
+/** Cor por função. As classes ficam escritas por extenso para o Tailwind enxergar todas. */
+export type Tone = 'neutral' | 'emerald' | 'sky' | 'warn' | 'rose' | 'violet';
+export const TONE: Record<Tone, { text: string; bar: string; dot: string; soft: string; border: string }> = {
+  neutral: { text: 'text-white/75', bar: 'bg-white/35', dot: 'bg-white/50', soft: 'bg-white/[0.06]', border: 'border-white/15' },
+  emerald: { text: 'text-emerald-300', bar: 'bg-emerald-400', dot: 'bg-emerald-400', soft: 'bg-emerald-400/10', border: 'border-emerald-400/30' },
+  sky: { text: 'text-sky-300', bar: 'bg-sky-400', dot: 'bg-sky-400', soft: 'bg-sky-400/10', border: 'border-sky-400/30' },
+  warn: { text: 'text-[#f0b968]', bar: 'bg-[#f0b968]', dot: 'bg-[#f0b968]', soft: 'bg-[#f0b968]/10', border: 'border-[#f0b968]/30' },
+  rose: { text: 'text-rose-300', bar: 'bg-rose-400', dot: 'bg-rose-400', soft: 'bg-rose-400/10', border: 'border-rose-400/30' },
+  violet: { text: 'text-violet-300', bar: 'bg-violet-400', dot: 'bg-violet-400', soft: 'bg-violet-400/10', border: 'border-violet-400/30' },
+};
 
 export const STATUS = {
-  confirmed: { label: 'Confirmado', cls: 'text-emerald-300 bg-emerald-400/10 border-emerald-400/25' },
-  completed: { label: 'Concluído', cls: 'text-sky-300 bg-sky-400/10 border-sky-400/25' },
-  cancelled: { label: 'Cancelado', cls: 'text-rose-300 bg-rose-400/10 border-rose-400/25' },
+  confirmed: { label: 'Confirmado', tone: 'emerald' as Tone, cls: 'text-emerald-300 bg-emerald-400/10 border-emerald-400/25' },
+  completed: { label: 'Concluído', tone: 'sky' as Tone, cls: 'text-sky-300 bg-sky-400/10 border-sky-400/25' },
+  cancelled: { label: 'Cancelado', tone: 'rose' as Tone, cls: 'text-rose-300 bg-rose-400/10 border-rose-400/25' },
 } as const;
+
+/** Cor de cada categoria de serviço */
+export const CATEGORY_TONE: Record<string, Tone> = {
+  cabelo: 'sky',
+  barba: 'warn',
+  combo: 'violet',
+  visagismo: 'emerald',
+  outro: 'neutral',
+};
+
+export const StatusBadge: React.FC<{ status: keyof typeof STATUS }> = ({ status }) => {
+  const st = STATUS[status];
+  return (
+    <span className={`inline-flex items-center gap-1.5 text-[10px] uppercase tracking-[0.14em] font-semibold border px-2 py-0.5 ${st.cls}`}>
+      <span className={`w-1.5 h-1.5 rounded-full ${TONE[st.tone].dot}`} />
+      {st.label}
+    </span>
+  );
+};
 
 export const Switch: React.FC<{ on: boolean; onChange: (v: boolean) => void; label: string }> = ({ on, onChange, label }) => (
   <button
@@ -62,26 +104,114 @@ export const Switch: React.FC<{ on: boolean; onChange: (v: boolean) => void; lab
   </button>
 );
 
-export const PageHead: React.FC<{ title: string; subtitle?: string; right?: React.ReactNode }> = ({ title, subtitle, right }) => (
-  <div className="flex flex-wrap items-end justify-between gap-4 mb-6">
+/** Cabeçalho da página (título grande + ações), separado do conteúdo por uma linha. */
+export const PageHead: React.FC<{ title: string; subtitle?: string; eyebrow?: string; right?: React.ReactNode }> = ({ title, subtitle, eyebrow, right }) => (
+  <div className="flex flex-wrap items-end justify-between gap-4 pb-6 mb-7 border-b border-white/[0.1]">
     <div>
-      <h2 className="font-serif text-[1.9rem] sm:text-4xl leading-none">{title}</h2>
-      {subtitle && <p className="mt-2 text-sm text-white/50 first-letter:uppercase">{subtitle}</p>}
+      {eyebrow && <p className="mb-2 text-[11px] uppercase tracking-[0.24em] text-white/35">{eyebrow}</p>}
+      <h2 className="font-serif text-[2rem] sm:text-4xl leading-none">{title}</h2>
+      {subtitle && <p className="mt-2.5 text-sm text-white/50 first-letter:uppercase">{subtitle}</p>}
     </div>
     {right}
   </div>
 );
 
-export const Stat: React.FC<{ label: string; value: string; hint?: string; icon: React.ReactNode }> = ({ label, value, hint, icon }) => (
-  <div className={`${card} p-4 sm:p-5 flex items-start justify-between gap-3`}>
-    <div className="min-w-0">
-      <p className="text-[11px] uppercase tracking-[0.18em] text-white/45">{label}</p>
-      <p className="mt-2 font-serif text-2xl sm:text-3xl leading-none">{value}</p>
-      {hint && <p className="mt-2 text-xs text-white/40">{hint}</p>}
-    </div>
-    <span className="w-9 h-9 shrink-0 flex items-center justify-center rounded-full bg-white/5 border border-white/10 text-white/70">{icon}</span>
+/** Título de grupo: separa blocos de assuntos diferentes dentro da mesma página. */
+export const SectionLabel: React.FC<{ children: React.ReactNode; tone?: Tone; hint?: string; right?: React.ReactNode }> = ({
+  children, tone = 'neutral', hint, right,
+}) => (
+  <div className="flex items-center gap-3 mt-9 mb-3.5 first:mt-0">
+    <span className={`w-2 h-2 rounded-full shrink-0 ${TONE[tone].dot}`} />
+    <h3 className="text-[11px] uppercase tracking-[0.24em] font-semibold text-white/65 whitespace-nowrap">{children}</h3>
+    <span className="flex-1 h-px bg-white/[0.09]" />
+    {hint && <span className="text-[11px] text-white/35 text-right">{hint}</span>}
+    {right}
   </div>
 );
+
+/** Bloco: cabeçalho com ícone e título + corpo. É o que faz cada função parecer uma "caixa" própria. */
+export const Section: React.FC<{
+  title: string;
+  subtitle?: string;
+  icon?: React.ReactNode;
+  tone?: Tone;
+  right?: React.ReactNode;
+  flush?: boolean;
+  className?: string;
+  children: React.ReactNode;
+}> = ({ title, subtitle, icon, tone = 'neutral', right, flush, className = '', children }) => {
+  const t = TONE[tone];
+  return (
+    <section className={`relative overflow-hidden bg-[#121216] border border-white/[0.1] ${className}`}>
+      <span aria-hidden className={`absolute left-0 top-0 bottom-0 w-[3px] ${t.bar}`} />
+      <header className="flex flex-wrap items-center justify-between gap-3 pl-6 pr-4 sm:pr-5 py-4 bg-white/[0.04] border-b border-white/[0.09]">
+        <div className="flex items-center gap-3 min-w-0">
+          {icon && <span className={`w-10 h-10 shrink-0 flex items-center justify-center border ${t.border} ${t.soft} ${t.text}`}>{icon}</span>}
+          <div className="min-w-0">
+            <h3 className="font-serif text-xl sm:text-2xl leading-tight">{title}</h3>
+            {subtitle && <p className="mt-0.5 text-xs sm:text-[13px] text-white/45 leading-snug">{subtitle}</p>}
+          </div>
+        </div>
+        {right}
+      </header>
+      <div className={flush ? '' : 'p-4 sm:p-6 pl-5 sm:pl-7'}>{children}</div>
+    </section>
+  );
+};
+
+/** Aviso (folga, intervalo, bloqueio): faixa colorida, claramente diferente de um agendamento. */
+export const Notice: React.FC<{ tone: Tone; icon: React.ReactNode; title: string; children?: React.ReactNode; action?: React.ReactNode }> = ({
+  tone, icon, title, children, action,
+}) => {
+  const t = TONE[tone];
+  return (
+    <div className={`flex items-center justify-between gap-3 border border-l-[3px] ${t.border} ${t.soft} px-4 py-3`}>
+      <div className="flex items-center gap-3 min-w-0">
+        <span className={`shrink-0 ${t.text}`}>{icon}</span>
+        <p className="text-sm min-w-0 text-white/70">
+          <b className={`font-semibold ${t.text}`}>{title}</b>
+          {children && <span className="text-white/60"> · {children}</span>}
+        </p>
+      </div>
+      {action}
+    </div>
+  );
+};
+
+/** Indicador numérico. `featured` = cartão claro (o dado mais importante da tela). */
+export const Stat: React.FC<{
+  label: string;
+  value: string;
+  hint?: string;
+  icon: React.ReactNode;
+  tone?: Tone;
+  featured?: boolean;
+}> = ({ label, value, hint, icon, tone = 'neutral', featured }) => {
+  const t = TONE[tone];
+  if (featured) {
+    return (
+      <div className="relative bg-[#ecece8] text-black border border-white/70 p-4 sm:p-5 flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <p className="text-[11px] uppercase tracking-[0.18em] font-semibold text-black/55">{label}</p>
+          <p className="mt-2 font-serif text-3xl sm:text-4xl leading-none tabular-nums">{value}</p>
+          {hint && <p className="mt-2 text-xs text-black/60 truncate">{hint}</p>}
+        </div>
+        <span className="w-9 h-9 shrink-0 flex items-center justify-center rounded-full bg-black/10 text-black/75">{icon}</span>
+      </div>
+    );
+  }
+  return (
+    <div className={`${card} relative overflow-hidden p-4 sm:p-5 flex items-start justify-between gap-3`}>
+      <span aria-hidden className={`absolute left-0 right-0 top-0 h-[3px] ${t.bar}`} />
+      <div className="min-w-0">
+        <p className="text-[11px] uppercase tracking-[0.18em] text-white/50">{label}</p>
+        <p className={`mt-2 font-serif text-3xl sm:text-4xl leading-none tabular-nums ${tone === 'neutral' ? '' : t.text}`}>{value}</p>
+        {hint && <p className="mt-2 text-xs text-white/40 truncate">{hint}</p>}
+      </div>
+      <span className={`w-9 h-9 shrink-0 flex items-center justify-center rounded-full border ${t.border} ${t.soft} ${t.text}`}>{icon}</span>
+    </div>
+  );
+};
 
 /** Botão de exclusão com confirmação em 2 toques (evita apagar sem querer) */
 export const ConfirmDelete: React.FC<{ onConfirm: () => void; label?: string; icon?: React.ReactNode; disabled?: boolean }> = ({ onConfirm, label = 'Remover', icon, disabled }) => {
