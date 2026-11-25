@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import {
   X, Calendar, Clock, Scissors, Users, TrendingUp, Plus, Trash2, CheckCircle2, XCircle, RotateCcw,
-  MessageCircle, ChevronLeft, ChevronRight, LogOut, KeyRound, Pencil, Search, Ban, Save, Check, Copy,
+  MessageCircle, ChevronLeft, ChevronRight, LogOut, KeyRound, Pencil, Search, Ban, Save, Check, Copy, Coffee, Wallet,
 } from 'lucide-react';
 import {
   Service, Appointment, BlockedSlot, BarberSettings, BreakRule, DEFAULT_BARBER_SETTINGS,
@@ -38,6 +38,15 @@ import {
   Stat,
   ConfirmDelete,
   normBreaks,
+  Section,
+  SectionLabel,
+  Notice,
+  StatusBadge,
+  TONE,
+  CATEGORY_TONE,
+  cardInset,
+  btnSuccess,
+  btnDangerGhost,
 } from './adminUi';
 
 /* ───────────────────────── helpers ───────────────────────── */
@@ -437,30 +446,43 @@ const AdminShell: React.FC<{ onClose: () => void; onLogout: () => void; onDataCh
   ).sort((a, b) => b[1] - a[1]).slice(0, 5);
 
   /* ───────────────────────── render ───────────────────────── */
+  const dayBreaks = daySchedule ? getDayBreaks(selectedDate, settings) : [];
+  const hasNotices = !daySchedule || dayBreaks.length > 0 || dayBlocks.length > 0;
+  const dayDone = dayActive.filter((a) => a.status === 'completed').length;
+  const todayCount = appointments.filter((a) => a.dateStr === todayStr() && a.status !== 'cancelled').length;
+  const weekActive = weekDays.flatMap((d) => appointments.filter((a) => a.dateStr === d && a.status !== 'cancelled'));
+  const weekRevenue = weekActive.reduce((s, a) => s + a.price, 0);
+  const weekdayName = (d: string) => WEEK_LONG[parseDate(d).getDay()];
+
   return (
-    <div className="fixed inset-0 z-50 bg-[#0c0c0e] text-white flex flex-col md:flex-row h-[100dvh]" role="dialog" aria-modal="true" aria-label="Painel do barbeiro">
+    <div className="fixed inset-0 z-50 bg-[#0a0a0c] text-white flex flex-col md:flex-row h-[100dvh]" role="dialog" aria-modal="true" aria-label="Painel do barbeiro">
       {/* Sidebar (desktop) */}
-      <aside className="hidden md:flex w-64 shrink-0 flex-col min-h-0 border-r border-white/[0.08] bg-[#101013]">
+      <aside className="hidden md:flex w-64 shrink-0 flex-col min-h-0 border-r border-white/[0.1] bg-[#0f0f12]">
         <div className="px-6 pt-7 pb-6 border-b border-white/[0.08]">
           <img src="/assets/logo-purazi-white.png" alt="PURAZI Studio" className="h-9 w-auto" />
           <p className="mt-3 text-[11px] uppercase tracking-[0.22em] text-white/40">Painel do barbeiro</p>
         </div>
-        <nav className="flex-1 min-h-0 overflow-y-auto px-3 py-4 space-y-1">
+        <nav className="flex-1 min-h-0 overflow-y-auto px-3 py-5 space-y-1">
+          <p className="px-4 pb-2 text-[10px] uppercase tracking-[0.24em] text-white/30">Menu</p>
           {NAV.map((n) => (
             <button
               key={n.id}
               onClick={() => setTab(n.id)}
               className={`relative w-full flex items-center gap-3 h-12 px-4 text-sm font-medium transition-colors cursor-pointer ${
-                tab === n.id ? 'bg-white/[0.07] text-white' : 'text-white/55 hover:text-white hover:bg-white/[0.04]'
+                tab === n.id ? 'bg-white/[0.09] text-white' : 'text-white/55 hover:text-white hover:bg-white/[0.04]'
               }`}
             >
               {tab === n.id && <span className="absolute left-0 top-2 bottom-2 w-[3px] bg-white" />}
               {n.icon}
-              {n.label}
+              <span className="flex-1 text-left">{n.label}</span>
+              {n.id === 'agenda' && todayCount > 0 && (
+                <span className="min-w-[1.4rem] h-[1.4rem] px-1.5 flex items-center justify-center rounded-full bg-emerald-400 text-black text-[11px] font-bold tabular-nums" title="Atendimentos de hoje">{todayCount}</span>
+              )}
             </button>
           ))}
         </nav>
         <div className="shrink-0 p-3 border-t border-white/[0.08] space-y-1">
+          <p className="px-4 pb-1 text-[10px] uppercase tracking-[0.24em] text-white/30">Conta</p>
           <button onClick={() => setSecurityOpen(true)} className="w-full flex items-center gap-3 h-11 px-4 text-sm text-white/55 hover:text-white hover:bg-white/[0.04] transition-colors cursor-pointer">
             <KeyRound className="w-4 h-4" /> Segurança
           </button>
@@ -474,7 +496,7 @@ const AdminShell: React.FC<{ onClose: () => void; onLogout: () => void; onDataCh
       </aside>
 
       {/* Barra superior (mobile) */}
-      <header className="md:hidden shrink-0 flex items-center justify-between h-14 px-4 border-b border-white/[0.08] bg-[#101013] pt-[env(safe-area-inset-top,0px)] box-content">
+      <header className="md:hidden shrink-0 flex items-center justify-between h-14 px-4 border-b border-white/[0.1] bg-[#0f0f12] pt-[env(safe-area-inset-top,0px)] box-content">
         <img src="/assets/logo-purazi-white.png" alt="PURAZI Studio" className="h-7 w-auto" />
         <div className="flex items-center">
           <button onClick={() => setSecurityOpen(true)} className="w-10 h-10 flex items-center justify-center text-white/60 hover:text-white cursor-pointer" aria-label="Segurança"><KeyRound className="w-5 h-5" /></button>
@@ -484,7 +506,7 @@ const AdminShell: React.FC<{ onClose: () => void; onLogout: () => void; onDataCh
       </header>
 
       {/* Conteúdo (rola sozinho) */}
-      <main id="admin-main" className="flex-1 min-h-0 overflow-y-auto overscroll-contain">
+      <main id="admin-main" className="flex-1 min-h-0 overflow-y-auto overscroll-contain bg-[#0a0a0c]">
         <div className="max-w-5xl mx-auto px-4 sm:px-8 py-6 sm:py-10 pb-28 md:pb-12">
           {loading && <div role="status" className="py-32 text-center text-sm text-white/45">Carregando agenda…</div>}
 
@@ -492,6 +514,7 @@ const AdminShell: React.FC<{ onClose: () => void; onLogout: () => void; onDataCh
           {!loading && tab === 'agenda' && (
             <section>
               <PageHead
+                eyebrow="Painel"
                 title="Agenda"
                 subtitle={longDate(selectedDate)}
                 right={
@@ -511,96 +534,153 @@ const AdminShell: React.FC<{ onClose: () => void; onLogout: () => void; onDataCh
                 }
               />
 
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-6">
-                <Stat label="Agendamentos" value={String(dayActive.length)} hint={daySchedule ? `${dayApts.length - dayActive.length} cancelado(s)` : 'Dia de folga'} icon={<Calendar className="w-4 h-4" />} />
-                <Stat label="Faturamento do dia" value={brl(dayRevenue)} hint="exceto cancelados" icon={<TrendingUp className="w-4 h-4" />} />
-                <Stat label={selectedDate === todayStr() ? 'Próximo cliente' : 'Primeiro cliente'} value={nextApt ? nextApt.timeStr : '—'} hint={nextApt ? nextApt.clientName : 'Sem agendamentos'} icon={<Clock className="w-4 h-4" />} />
+              {/* 1 · Resumo do dia: três números, cada um com a sua cor */}
+              <SectionLabel tone="sky" hint={weekdayName(selectedDate)}>Resumo do dia</SectionLabel>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <Stat tone="sky" label="Agendamentos" value={String(dayActive.length)} hint={daySchedule ? `${dayApts.length - dayActive.length} cancelado(s)` : 'Dia de folga'} icon={<Calendar className="w-4 h-4" />} />
+                <Stat tone="emerald" label="Faturamento do dia" value={brl(dayRevenue)} hint="exceto cancelados" icon={<Wallet className="w-4 h-4" />} />
+                <Stat featured label={selectedDate === todayStr() ? 'Próximo cliente' : 'Primeiro cliente'} value={nextApt ? nextApt.timeStr : '—'} hint={nextApt ? `${nextApt.clientName} · ${nextApt.serviceName}` : 'Sem agendamentos'} icon={<Clock className="w-4 h-4" />} />
               </div>
 
               {agendaView === 'day' ? (
-                <div className="space-y-3">
-                  {!daySchedule && (
-                    <div className="flex items-center gap-3 p-4 border border-amber-400/25 bg-amber-400/[0.07] text-amber-200 text-sm"><Ban className="w-4 h-4 shrink-0" /> Este dia é folga fixa — não recebe agendamentos.</div>
-                  )}
-                  {daySchedule && getDayBreaks(selectedDate, settings).map((b, i) => (
-                    <div key={`brk-${i}`} className="flex items-center gap-3 p-4 border border-white/10 bg-white/[0.03] text-white/65 text-sm">
-                      <Clock className="w-4 h-4 shrink-0" />
-                      <span className="truncate"><b className="font-semibold text-white/85">{b.label || 'Intervalo'}</b> · {b.start}–{b.end} · sem agendamentos novos (edite em Horários)</span>
-                    </div>
-                  ))}
-                  {dayBlocks.map((b) => (
-                    <div key={b.id} className="flex items-center justify-between gap-3 p-4 border border-amber-400/25 bg-amber-400/[0.07]">
-                      <div className="flex items-center gap-3 text-amber-200 text-sm min-w-0">
-                        <Ban className="w-4 h-4 shrink-0" />
-                        <span className="truncate"><b className="font-semibold">{!b.timeStr ? 'Dia inteiro bloqueado' : b.endTimeStr ? `Bloqueado ${b.timeStr}–${b.endTimeStr}` : `Bloqueado ${b.timeStr}`}</b> · {b.reason}</span>
+                <>
+                  {/* 2 · Avisos: folga, intervalos e bloqueios (não são atendimentos) */}
+                  {hasNotices && (
+                    <>
+                      <SectionLabel tone="warn" hint="não são agendamentos">Avisos do dia</SectionLabel>
+                      <div className="space-y-2">
+                        {!daySchedule && (
+                          <Notice tone="warn" icon={<Ban className="w-4 h-4" />} title="Folga fixa">este dia não recebe agendamentos.</Notice>
+                        )}
+                        {dayBreaks.map((b, i) => (
+                          <Notice key={`brk-${i}`} tone="violet" icon={<Coffee className="w-4 h-4" />} title={b.label || 'Intervalo'}>
+                            {b.start}–{b.end} · sem agendamentos novos (edite em Horários)
+                          </Notice>
+                        ))}
+                        {dayBlocks.map((b) => (
+                          <Notice
+                            key={b.id}
+                            tone="warn"
+                            icon={<Ban className="w-4 h-4" />}
+                            title={!b.timeStr ? 'Dia inteiro bloqueado' : b.endTimeStr ? `Bloqueado ${b.timeStr}–${b.endTimeStr}` : `Bloqueado ${b.timeStr}`}
+                            action={<ConfirmDelete onConfirm={() => removeBlock(b.id)} label="Liberar" />}
+                          >
+                            {b.reason}
+                          </Notice>
+                        ))}
                       </div>
-                      <ConfirmDelete onConfirm={() => removeBlock(b.id)} label="Liberar" />
-                    </div>
-                  ))}
-
-                  {dayApts.length === 0 && daySchedule && (
-                    <div className={`${card} py-16 px-6 text-center`}>
-                      <Calendar className="w-8 h-8 mx-auto text-white/25" />
-                      <p className="mt-4 font-serif text-2xl">Nenhum agendamento neste dia</p>
-                      <p className="mt-1 text-sm text-white/45">Quando um cliente marcar pelo site, ele aparece aqui.</p>
-                    </div>
+                    </>
                   )}
 
-                  {dayApts.map((a) => {
-                    const st = STATUS[a.status];
-                    return (
-                      <article key={a.id} className={`${card} flex flex-col sm:flex-row sm:items-center gap-4 p-4 sm:p-5 ${a.status === 'cancelled' ? 'opacity-60' : ''}`}>
-                        <div className="sm:w-24 shrink-0">
-                          <p className="font-serif text-3xl leading-none tabular-nums">{a.timeStr}</p>
-                          <p className="mt-1 text-[11px] text-white/40">{a.durationMinutes} min</p>
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <div className="flex flex-wrap items-center gap-2">
-                            <h3 className="text-base font-semibold truncate">{a.clientName}</h3>
-                            <span className={`text-[10px] uppercase tracking-[0.14em] font-semibold border px-2 py-0.5 ${st.cls}`}>{st.label}</span>
+                  {/* 3 · Agenda completa: linha do tempo dos atendimentos */}
+                  <div className="mt-9">
+                    <Section
+                      title="Agenda completa"
+                      subtitle={dayApts.length === 0 ? 'Nenhum atendimento neste dia' : `${dayApts.length} registro(s) · ordem de horário`}
+                      icon={<Calendar className="w-5 h-5" />}
+                      tone="emerald"
+                      flush
+                      right={
+                        dayActive.length > 0 ? (
+                          <div className="flex items-center gap-3">
+                            <span className="text-xs text-white/55 tabular-nums"><b className="text-white">{dayDone}</b> de {dayActive.length} concluídos</span>
+                            <span className="hidden sm:block w-24 h-1.5 bg-white/10"><span className="block h-full bg-emerald-400 transition-all" style={{ width: `${(dayDone / dayActive.length) * 100}%` }} /></span>
                           </div>
-                          <p className="mt-1 text-sm text-white/60 truncate">{a.serviceName} · <span className="text-white">{brl(a.price)}</span></p>
-                          <p className="mt-0.5 text-xs text-white/40">{fmtPhone(a.clientPhone)} · {a.code}</p>
+                        ) : undefined
+                      }
+                    >
+                      {dayApts.length === 0 ? (
+                        <div className="py-14 px-6 text-center">
+                          <Calendar className="w-8 h-8 mx-auto text-white/25" />
+                          <p className="mt-4 font-serif text-2xl">{daySchedule ? 'Nenhum agendamento neste dia' : 'Dia de folga'}</p>
+                          <p className="mt-1 text-sm text-white/45">{daySchedule ? 'Quando um cliente marcar pelo site, ele aparece aqui.' : 'Este dia não recebe agendamentos.'}</p>
                         </div>
-                        <div className="flex flex-wrap items-center gap-2">
-                          <a href={`https://wa.me/55${a.clientPhone.replace(/\D/g, '')}`} target="_blank" rel="noopener noreferrer" className={btnGhost + ' !px-3'} aria-label="Chamar no WhatsApp"><MessageCircle className="w-4 h-4" /></a>
-                          {a.status === 'confirmed' ? (
-                            <>
-                              <button onClick={() => setStatus(a.id, 'completed')} className="inline-flex items-center gap-1.5 h-10 px-4 bg-emerald-400 hover:bg-emerald-300 text-black text-xs uppercase tracking-[0.12em] font-bold cursor-pointer transition-colors"><CheckCircle2 className="w-4 h-4" />Concluir</button>
-                              <button onClick={() => setStatus(a.id, 'cancelled')} className="inline-flex items-center gap-1.5 h-10 px-3 border border-white/15 hover:border-rose-400/50 hover:text-rose-300 text-xs uppercase tracking-[0.12em] font-semibold text-white/70 cursor-pointer transition-colors"><XCircle className="w-4 h-4" />Cancelar</button>
-                            </>
-                          ) : (
-                            isClosedForReopen(a.dateStr, a.timeStr) ? (
-                              <span className="inline-flex items-center h-10 px-3 text-[11px] uppercase tracking-[0.14em] text-white/35 border border-white/10" title="12h depois do horário marcado o atendimento é encerrado e não pode ser reaberto">Encerrado</span>
-                            ) : (
-                              <button onClick={() => setStatus(a.id, 'confirmed')} className={btnGhost}><RotateCcw className="w-4 h-4" />Reabrir</button>
-                            )
-                          )}
-                        </div>
-                      </article>
-                    );
-                  })}
-                </div>
+                      ) : (
+                        <ol className="p-3 sm:p-6">
+                          {dayApts.map((a) => {
+                            const t = TONE[STATUS[a.status].tone];
+                            const cancelled = a.status === 'cancelled';
+                            const isNext = nextApt?.id === a.id;
+                            return (
+                              <li key={a.id} className="group grid grid-cols-[3.5rem_1.25rem_minmax(0,1fr)] sm:grid-cols-[4.5rem_1.5rem_minmax(0,1fr)] pb-3 last:pb-0">
+                                <div className="pt-[1.05rem] pr-1 text-right">
+                                  <p className={`font-serif text-xl sm:text-2xl leading-none tabular-nums ${cancelled ? 'text-white/40' : ''}`}>{a.timeStr}</p>
+                                  <p className="mt-1 text-[10px] text-white/35">{a.durationMinutes} min</p>
+                                </div>
+                                <div className="relative">
+                                  <span aria-hidden className="absolute left-1/2 -translate-x-1/2 top-0 bottom-0 w-px bg-white/10 group-last:bottom-auto group-last:h-5" />
+                                  <span aria-hidden className={`absolute left-1/2 -translate-x-1/2 top-[1.15rem] w-2.5 h-2.5 rounded-full ring-4 ring-[#121216] ${t.dot}`} />
+                                </div>
+                                <article className={`relative min-w-0 border pl-5 pr-4 py-4 flex flex-col lg:flex-row lg:items-center gap-4 ${isNext ? 'border-white/40 bg-white/[0.07]' : 'border-white/[0.08] bg-black/25'} ${cancelled ? 'opacity-60' : ''}`}>
+                                  <span aria-hidden className={`absolute left-0 inset-y-0 w-1 ${t.bar}`} />
+                                  <div className="flex-1 min-w-0">
+                                    <div className="flex flex-wrap items-center gap-2">
+                                      <h4 className={`text-base font-semibold truncate ${cancelled ? 'line-through decoration-white/30' : ''}`}>{a.clientName}</h4>
+                                      <StatusBadge status={a.status} />
+                                      {isNext && <span className="text-[10px] uppercase tracking-[0.14em] font-bold bg-white text-black px-2 py-0.5">Próximo</span>}
+                                    </div>
+                                    <p className="mt-1.5 text-sm text-white/65 truncate">{a.serviceName}</p>
+                                    <p className="mt-0.5 text-xs text-white/40">{fmtPhone(a.clientPhone)} · código {a.code}</p>
+                                  </div>
+                                  <div className="flex flex-wrap items-center justify-between lg:justify-end gap-x-5 gap-y-3 lg:border-l lg:border-white/[0.09] lg:pl-5">
+                                    <p className="font-serif text-xl tabular-nums">{brl(a.price)}</p>
+                                    <div className="flex flex-wrap items-center gap-2">
+                                      <a href={`https://wa.me/55${a.clientPhone.replace(/\D/g, '')}`} target="_blank" rel="noopener noreferrer" className={btnGhost + ' !px-3'} aria-label="Chamar no WhatsApp"><MessageCircle className="w-4 h-4" /></a>
+                                      {a.status === 'confirmed' ? (
+                                        <>
+                                          <button onClick={() => setStatus(a.id, 'completed')} className={btnSuccess}><CheckCircle2 className="w-4 h-4" />Concluir</button>
+                                          <button onClick={() => setStatus(a.id, 'cancelled')} className={btnDangerGhost}><XCircle className="w-4 h-4" />Cancelar</button>
+                                        </>
+                                      ) : isClosedForReopen(a.dateStr, a.timeStr) ? (
+                                        <span className="inline-flex items-center h-10 px-3 text-[11px] uppercase tracking-[0.14em] text-white/35 border border-white/10" title="12h depois do horário marcado o atendimento é encerrado e não pode ser reaberto">Encerrado</span>
+                                      ) : (
+                                        <button onClick={() => setStatus(a.id, 'confirmed')} className={btnGhost}><RotateCcw className="w-4 h-4" />Reabrir</button>
+                                      )}
+                                    </div>
+                                  </div>
+                                </article>
+                              </li>
+                            );
+                          })}
+                        </ol>
+                      )}
+                    </Section>
+                  </div>
+                </>
               ) : (
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-                  {weekDays.map((d) => {
-                    const sch = getDaySchedule(d, settings);
-                    const list = appointments.filter((a) => a.dateStr === d && a.status !== 'cancelled');
-                    const rev = list.reduce((s, a) => s + a.price, 0);
-                    const reduced = sch && (sch.start !== settings.workStart || sch.end !== settings.workEnd);
-                    const isToday = d === todayStr();
-                    return (
-                      <button key={d} onClick={() => { setSelectedDate(d); setAgendaView('day'); }} className={`${card} text-left p-4 hover:border-white/30 transition-colors cursor-pointer ${isToday ? '!border-white/40' : ''} ${!sch ? 'opacity-55' : ''}`}>
-                        <div className="flex items-center justify-between">
-                          <span className="text-[11px] uppercase tracking-[0.18em] text-white/45">{WEEK_SHORT[parseDate(d).getDay()]} · {shortBR(d)}</span>
-                          {isToday && <span className="text-[10px] uppercase font-bold bg-white text-black px-1.5 py-0.5">Hoje</span>}
-                        </div>
-                        <p className="mt-3 font-serif text-4xl leading-none">{list.length}</p>
-                        <p className="mt-1 text-xs text-white/45">{list.length === 1 ? 'agendamento' : 'agendamentos'} · {brl(rev)}</p>
-                        <p className="mt-3 text-[11px] text-white/50">{!sch ? 'Folga' : reduced ? `Reduzido ${sch.start}–${sch.end}` : `${sch.start}–${sch.end}`}</p>
-                      </button>
-                    );
-                  })}
+                <div className="mt-9">
+                  <Section
+                    title="Semana"
+                    subtitle={`${shortBR(weekDays[0])} a ${shortBR(weekDays[6])} · toque em um dia para abrir`}
+                    icon={<Calendar className="w-5 h-5" />}
+                    tone="sky"
+                    right={<span className="text-xs text-white/55 tabular-nums"><b className="text-white">{weekActive.length}</b> atendimentos · <b className="text-emerald-300">{brl(weekRevenue)}</b></span>}
+                  >
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+                      {weekDays.map((d) => {
+                        const sch = getDaySchedule(d, settings);
+                        const list = appointments.filter((a) => a.dateStr === d && a.status !== 'cancelled');
+                        const rev = list.reduce((s, a) => s + a.price, 0);
+                        const reduced = sch && (sch.start !== settings.workStart || sch.end !== settings.workEnd);
+                        const isToday = d === todayStr();
+                        return (
+                          <button
+                            key={d}
+                            onClick={() => { setSelectedDate(d); setAgendaView('day'); }}
+                            className={`${cardInset} text-left p-4 hover:border-white/30 transition-colors cursor-pointer ${isToday ? '!border-emerald-400/50 !bg-emerald-400/[0.07]' : d === selectedDate ? '!border-white/35' : ''} ${!sch ? 'opacity-55' : ''}`}
+                          >
+                            <div className="flex items-center justify-between">
+                              <span className="text-[11px] uppercase tracking-[0.18em] text-white/45">{WEEK_SHORT[parseDate(d).getDay()]} · {shortBR(d)}</span>
+                              {isToday && <span className="text-[10px] uppercase font-bold bg-emerald-400 text-black px-1.5 py-0.5">Hoje</span>}
+                            </div>
+                            <p className="mt-3 font-serif text-4xl leading-none">{list.length}</p>
+                            <p className="mt-1 text-xs text-white/45">{list.length === 1 ? 'agendamento' : 'agendamentos'} · <span className={rev > 0 ? 'text-emerald-300' : ''}>{brl(rev)}</span></p>
+                            <p className="mt-3 text-[11px] text-white/50">{!sch ? 'Folga' : reduced ? `Reduzido ${sch.start}–${sch.end}` : `${sch.start}–${sch.end}`}</p>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </Section>
                 </div>
               )}
             </section>
@@ -608,162 +688,170 @@ const AdminShell: React.FC<{ onClose: () => void; onLogout: () => void; onDataCh
 
           {/* ───────── HORÁRIOS ───────── */}
           {!loading && tab === 'horarios' && (
-            <section className="space-y-6">
-              <PageHead title="Horários" subtitle="Defina o expediente, folgas e horários reduzidos por dia da semana." />
+            <section>
+              <PageHead eyebrow="Painel" title="Horários" subtitle="Defina o expediente, folgas e horários reduzidos por dia da semana." />
 
-              <div className={`${card} p-5 sm:p-6`}>
-                <h3 className="font-serif text-2xl">Expediente padrão</h3>
-                <p className="text-sm text-white/45 mt-1 mb-5">Vale para todos os dias abertos, a menos que você defina um horário próprio abaixo.</p>
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                  <div><label className={lbl} htmlFor="ds">Abre às</label><input id="ds" type="time" value={defStart} onChange={(e) => setDefStart(e.target.value)} className={inp} /></div>
-                  <div><label className={lbl} htmlFor="de">Fecha às</label><input id="de" type="time" value={defEnd} onChange={(e) => setDefEnd(e.target.value)} className={inp} /></div>
-                  <div>
-                    <label className={lbl} htmlFor="di">Intervalo entre horários</label>
-                    <select id="di" value={interval} onChange={(e) => setIntervalMin(e.target.value)} className={inp}>
-                      {[15, 20, 30, 40, 45, 60].map((m) => <option key={m} value={m} className="bg-[#141417]">{m} minutos</option>)}
-                    </select>
+              {/* Grupo 1: regras que se repetem — precisam de "Salvar" */}
+              <SectionLabel tone="emerald" hint="precisa salvar no final">Expediente recorrente</SectionLabel>
+              <div className="space-y-4">
+                <Section title="Expediente padrão" subtitle="Vale para todos os dias abertos, a menos que você defina um horário próprio abaixo." icon={<Clock className="w-5 h-5" />}>
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                    <div><label className={lbl} htmlFor="ds">Abre às</label><input id="ds" type="time" value={defStart} onChange={(e) => setDefStart(e.target.value)} className={inp} /></div>
+                    <div><label className={lbl} htmlFor="de">Fecha às</label><input id="de" type="time" value={defEnd} onChange={(e) => setDefEnd(e.target.value)} className={inp} /></div>
+                    <div>
+                      <label className={lbl} htmlFor="di">Intervalo entre horários</label>
+                      <select id="di" value={interval} onChange={(e) => setIntervalMin(e.target.value)} className={inp}>
+                        {[15, 20, 30, 40, 45, 60].map((m) => <option key={m} value={m} className="bg-[#141417]">{m} minutos</option>)}
+                      </select>
+                    </div>
                   </div>
-                </div>
-              </div>
+                </Section>
 
-              <div className={`${card} p-5 sm:p-6`}>
-                <h3 className="font-serif text-2xl">Dias da semana</h3>
-                <p className="text-sm text-white/45 mt-1 mb-5">Ex.: no sábado, deixe aberto só até as 14h. O dia continua recebendo agendamentos nos horários que sobrarem.</p>
-                <div className="divide-y divide-white/[0.07]">
-                  {WEEK_ORDER.map((wd) => {
-                    const open = !offDays.includes(wd);
-                    const c = custom[wd];
-                    const start = c?.start ?? defStart;
-                    const end = c?.end ?? defEnd;
-                    const isCustom = open && (start !== defStart || end !== defEnd);
-                    const slots = countSlots(start, end, parseInt(interval, 10) || 45);
-                    return (
-                      <div key={wd} className="py-4 flex flex-col lg:flex-row lg:items-center gap-3 lg:gap-6">
-                        <div className="flex items-center justify-between lg:w-56 gap-4">
-                          <div className="flex items-center gap-3">
-                            <Switch on={open} label={`${WEEK_LONG[wd]} aberto`} onChange={(v) => setOffDays((p) => (v ? p.filter((d) => d !== wd) : [...p, wd]))} />
-                            <span className={`font-medium ${open ? '' : 'text-white/40'}`}>{WEEK_LONG[wd]}</span>
-                          </div>
-                          {!open && <span className="text-[10px] uppercase tracking-[0.14em] font-semibold border border-white/15 text-white/50 px-2 py-0.5">Folga</span>}
-                          {open && isCustom && <span className="text-[10px] uppercase tracking-[0.14em] font-semibold border border-amber-400/30 bg-amber-400/10 text-amber-200 px-2 py-0.5">Reduzido</span>}
-                        </div>
-                        <div className={`flex flex-wrap items-center gap-3 flex-1 ${open ? '' : 'opacity-30 pointer-events-none'}`}>
-                          <input type="time" value={start} onChange={(e) => setCustom((p) => ({ ...p, [wd]: { start: e.target.value, end } }))} className={inp + ' !w-32'} aria-label={`${WEEK_LONG[wd]} abre às`} />
-                          <span className="text-white/35 text-sm">até</span>
-                          <input type="time" value={end} onChange={(e) => setCustom((p) => ({ ...p, [wd]: { start, end: e.target.value } }))} className={inp + ' !w-32'} aria-label={`${WEEK_LONG[wd]} fecha às`} />
-                          <span className="text-xs text-white/40">{slots} horários</span>
-                          {isCustom && <button type="button" onClick={() => setCustom((p) => ({ ...p, [wd]: undefined }))} className="text-xs text-white/50 hover:text-white underline underline-offset-4 cursor-pointer">usar padrão</button>}
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-
-              <div className={`${card} p-5 sm:p-6`}>
-                <div className="flex flex-wrap items-start justify-between gap-3">
-                  <div>
-                    <h3 className="font-serif text-2xl">Intervalos programados</h3>
-                    <p className="text-sm text-white/45 mt-1 max-w-xl">
-                      Pausas que se repetem, como o almoço. Os clientes não conseguem marcar nenhum serviço que encoste nesse período.
-                    </p>
-                  </div>
-                  {breaks.length > 0 && (
-                    <button type="button" onClick={() => addBreak()} disabled={breaks.length >= 10} className={btnGhost}>
-                      <Plus className="w-4 h-4" /> Novo intervalo
-                    </button>
-                  )}
-                </div>
-
-                {breaks.length === 0 ? (
-                  <div className="mt-5 border border-dashed border-white/15 p-6 text-center">
-                    <Clock className="w-7 h-7 mx-auto text-white/25" />
-                    <p className="mt-3 text-sm text-white/50">Nenhum intervalo configurado.</p>
-                    <button type="button" onClick={() => addBreak()} className={btnSolid + ' mt-4'}>
-                      <Plus className="w-4 h-4" /> Adicionar almoço (12h às 13h)
-                    </button>
-                  </div>
-                ) : (
-                  <ul className="mt-5 space-y-4">
-                    {breaks.map((b, i) => {
-                      const invalid = !b.start || !b.end || b.start >= b.end;
-                      const conflicts = breakConflicts(b);
+                <Section title="Dias da semana" subtitle="Ex.: no sábado, deixe aberto só até as 14h. O dia continua recebendo agendamentos nos horários que sobrarem." icon={<Calendar className="w-5 h-5" />} tone="sky">
+                  <div className="space-y-2">
+                    {WEEK_ORDER.map((wd) => {
+                      const open = !offDays.includes(wd);
+                      const c = custom[wd];
+                      const start = c?.start ?? defStart;
+                      const end = c?.end ?? defEnd;
+                      const isCustom = open && (start !== defStart || end !== defEnd);
+                      const slots = countSlots(start, end, parseInt(interval, 10) || 45);
                       return (
-                        <li key={i} className="border border-white/10 bg-black/20 p-4 sm:p-5 space-y-4">
-                          <div className="grid grid-cols-2 sm:grid-cols-[1fr_8rem_8rem_auto] gap-3 items-end">
-                            <div className="col-span-2 sm:col-span-1">
-                              <label className={lbl} htmlFor={`br-l-${i}`}>Nome</label>
-                              <input id={`br-l-${i}`} value={b.label} maxLength={40} placeholder="Ex.: Almoço" onChange={(e) => updateBreak(i, { label: e.target.value })} className={inp} />
+                        <div key={wd} className={`${cardInset} relative px-4 py-3.5 flex flex-col lg:flex-row lg:items-center gap-3 lg:gap-6 ${open ? '' : 'bg-white/[0.02]'}`}>
+                          <span aria-hidden className={`absolute left-0 inset-y-0 w-[3px] ${!open ? 'bg-white/15' : isCustom ? 'bg-[#f0b968]' : 'bg-emerald-400'}`} />
+                          <div className="flex items-center justify-between lg:w-60 gap-4 pl-1">
+                            <div className="flex items-center gap-3">
+                              <Switch on={open} label={`${WEEK_LONG[wd]} aberto`} onChange={(v) => setOffDays((p) => (v ? p.filter((d) => d !== wd) : [...p, wd]))} />
+                              <span className={`font-medium ${open ? '' : 'text-white/40'}`}>{WEEK_LONG[wd]}</span>
                             </div>
-                            <div>
-                              <label className={lbl} htmlFor={`br-s-${i}`}>Das</label>
-                              <input id={`br-s-${i}`} type="time" value={b.start} onChange={(e) => updateBreak(i, { start: e.target.value })} className={inp} />
-                            </div>
-                            <div>
-                              <label className={lbl} htmlFor={`br-e-${i}`}>Até</label>
-                              <input id={`br-e-${i}`} type="time" value={b.end} onChange={(e) => updateBreak(i, { end: e.target.value })} className={inp} />
-                            </div>
-                            <div className="col-span-2 sm:col-span-1 flex sm:block justify-end">
-                              <ConfirmDelete label="Remover" onConfirm={() => removeBreak(i)} />
-                            </div>
+                            {!open && <span className="text-[10px] uppercase tracking-[0.14em] font-semibold border border-white/15 text-white/50 px-2 py-0.5">Folga</span>}
+                            {open && isCustom && <span className="text-[10px] uppercase tracking-[0.14em] font-semibold border border-[#f0b968]/30 bg-[#f0b968]/10 text-[#f0b968] px-2 py-0.5">Reduzido</span>}
                           </div>
-
-                          <div>
-                            <p className={lbl}>Repete em</p>
-                            <div className="flex flex-wrap gap-2">
-                              {WEEK_ORDER.map((wd) => {
-                                const on = b.days.includes(wd);
-                                const off = offDays.includes(wd);
-                                return (
-                                  <button
-                                    key={wd}
-                                    type="button"
-                                    aria-pressed={on}
-                                    onClick={() => toggleBreakDay(i, wd)}
-                                    title={off ? `${WEEK_LONG[wd]} é folga` : WEEK_LONG[wd]}
-                                    className={`h-9 min-w-[3rem] px-3 border text-[11px] uppercase tracking-[0.12em] font-semibold cursor-pointer transition-colors ${
-                                      on ? 'bg-white text-black border-white' : 'border-white/15 text-white/55 hover:border-white/40 hover:text-white'
-                                    } ${off ? 'opacity-45' : ''}`}
-                                  >
-                                    {WEEK_SHORT[wd]}
-                                  </button>
-                                );
-                              })}
-                              <button
-                                type="button"
-                                onClick={() => updateBreak(i, { days: openDays })}
-                                className="h-9 px-3 text-[11px] uppercase tracking-[0.12em] text-white/50 hover:text-white underline underline-offset-4 cursor-pointer"
-                              >
-                                Todos os dias abertos
-                              </button>
-                            </div>
+                          <div className={`flex flex-wrap items-center gap-3 flex-1 ${open ? '' : 'opacity-30 pointer-events-none'}`}>
+                            <input type="time" value={start} onChange={(e) => setCustom((p) => ({ ...p, [wd]: { start: e.target.value, end } }))} className={inp + ' !w-32'} aria-label={`${WEEK_LONG[wd]} abre às`} />
+                            <span className="text-white/35 text-sm">até</span>
+                            <input type="time" value={end} onChange={(e) => setCustom((p) => ({ ...p, [wd]: { start, end: e.target.value } }))} className={inp + ' !w-32'} aria-label={`${WEEK_LONG[wd]} fecha às`} />
+                            <span className="text-xs text-white/40">{slots} horários</span>
+                            {isCustom && <button type="button" onClick={() => setCustom((p) => ({ ...p, [wd]: undefined }))} className="text-xs text-white/50 hover:text-white underline underline-offset-4 cursor-pointer">usar padrão</button>}
                           </div>
-
-                          {invalid && <p className="text-xs text-rose-300">O fim do intervalo precisa ser depois do início.</p>}
-                          {!invalid && b.days.length === 0 && <p className="text-xs text-rose-300">Escolha ao menos um dia da semana.</p>}
-                          {!invalid && conflicts > 0 && (
-                            <p className="text-xs text-amber-200 leading-relaxed">
-                              Atenção: {conflicts} agendamento{conflicts > 1 ? 's' : ''} futuro{conflicts > 1 ? 's' : ''} já marcado{conflicts > 1 ? 's' : ''} cai{conflicts > 1 ? 'em' : ''} dentro desse intervalo e
-                              continua{conflicts > 1 ? 'm' : ''} valendo. Remarque ou cancele pela Agenda, se for o caso.
-                            </p>
-                          )}
-                        </li>
+                        </div>
                       );
                     })}
-                  </ul>
-                )}
-                <p className="mt-4 text-xs text-white/40">Lembre de tocar em “Salvar horários” para valer na agenda dos clientes.</p>
+                  </div>
+                </Section>
+
+                <Section
+                  title="Intervalos programados"
+                  subtitle="Pausas que se repetem, como o almoço. Os clientes não conseguem marcar nenhum serviço que encoste nesse período."
+                  icon={<Coffee className="w-5 h-5" />}
+                  tone="violet"
+                  right={
+                    breaks.length > 0 ? (
+                      <button type="button" onClick={() => addBreak()} disabled={breaks.length >= 10} className={btnGhost}>
+                        <Plus className="w-4 h-4" /> Novo intervalo
+                      </button>
+                    ) : undefined
+                  }
+                >
+                  {breaks.length === 0 ? (
+                    <div className="border border-dashed border-white/15 p-6 text-center">
+                      <Clock className="w-7 h-7 mx-auto text-white/25" />
+                      <p className="mt-3 text-sm text-white/50">Nenhum intervalo configurado.</p>
+                      <button type="button" onClick={() => addBreak()} className={btnSolid + ' mt-4'}>
+                        <Plus className="w-4 h-4" /> Adicionar almoço (12h às 13h)
+                      </button>
+                    </div>
+                  ) : (
+                    <ul className="space-y-3">
+                      {breaks.map((b, i) => {
+                        const invalid = !b.start || !b.end || b.start >= b.end;
+                        const conflicts = breakConflicts(b);
+                        return (
+                          <li key={i} className={`${cardInset} relative pl-6 pr-4 sm:pr-5 py-4 sm:py-5 space-y-4`}>
+                            <span aria-hidden className="absolute left-0 inset-y-0 w-[3px] bg-violet-400/70" />
+                            <div className="grid grid-cols-2 sm:grid-cols-[1fr_8rem_8rem_auto] gap-3 items-end">
+                              <div className="col-span-2 sm:col-span-1">
+                                <label className={lbl} htmlFor={`br-l-${i}`}>Nome</label>
+                                <input id={`br-l-${i}`} value={b.label} maxLength={40} placeholder="Ex.: Almoço" onChange={(e) => updateBreak(i, { label: e.target.value })} className={inp} />
+                              </div>
+                              <div>
+                                <label className={lbl} htmlFor={`br-s-${i}`}>Das</label>
+                                <input id={`br-s-${i}`} type="time" value={b.start} onChange={(e) => updateBreak(i, { start: e.target.value })} className={inp} />
+                              </div>
+                              <div>
+                                <label className={lbl} htmlFor={`br-e-${i}`}>Até</label>
+                                <input id={`br-e-${i}`} type="time" value={b.end} onChange={(e) => updateBreak(i, { end: e.target.value })} className={inp} />
+                              </div>
+                              <div className="col-span-2 sm:col-span-1 flex sm:block justify-end">
+                                <ConfirmDelete label="Remover" onConfirm={() => removeBreak(i)} />
+                              </div>
+                            </div>
+
+                            <div>
+                              <p className={lbl}>Repete em</p>
+                              <div className="flex flex-wrap gap-2">
+                                {WEEK_ORDER.map((wd) => {
+                                  const on = b.days.includes(wd);
+                                  const off = offDays.includes(wd);
+                                  return (
+                                    <button
+                                      key={wd}
+                                      type="button"
+                                      aria-pressed={on}
+                                      onClick={() => toggleBreakDay(i, wd)}
+                                      title={off ? `${WEEK_LONG[wd]} é folga` : WEEK_LONG[wd]}
+                                      className={`h-9 min-w-[3rem] px-3 border text-[11px] uppercase tracking-[0.12em] font-semibold cursor-pointer transition-colors ${
+                                        on ? 'bg-white text-black border-white' : 'border-white/15 text-white/55 hover:border-white/40 hover:text-white'
+                                      } ${off ? 'opacity-45' : ''}`}
+                                    >
+                                      {WEEK_SHORT[wd]}
+                                    </button>
+                                  );
+                                })}
+                                <button
+                                  type="button"
+                                  onClick={() => updateBreak(i, { days: openDays })}
+                                  className="h-9 px-3 text-[11px] uppercase tracking-[0.12em] text-white/50 hover:text-white underline underline-offset-4 cursor-pointer"
+                                >
+                                  Todos os dias abertos
+                                </button>
+                              </div>
+                            </div>
+
+                            {invalid && <p className="text-xs text-rose-300">O fim do intervalo precisa ser depois do início.</p>}
+                            {!invalid && b.days.length === 0 && <p className="text-xs text-rose-300">Escolha ao menos um dia da semana.</p>}
+                            {!invalid && conflicts > 0 && (
+                              <p className="text-xs text-[#f0b968] leading-relaxed">
+                                Atenção: {conflicts} agendamento{conflicts > 1 ? 's' : ''} futuro{conflicts > 1 ? 's' : ''} já marcado{conflicts > 1 ? 's' : ''} cai{conflicts > 1 ? 'em' : ''} dentro desse intervalo e
+                                continua{conflicts > 1 ? 'm' : ''} valendo. Remarque ou cancele pela Agenda, se for o caso.
+                              </p>
+                            )}
+                          </li>
+                        );
+                      })}
+                    </ul>
+                  )}
+                </Section>
+
+                <div className={`sticky bottom-20 md:bottom-4 z-10 flex items-center justify-between gap-4 p-4 border backdrop-blur-md transition-colors ${dirty ? 'bg-[#10241c]/95 border-emerald-400/50' : 'bg-[#141417]/85 border-white/[0.1]'}`}>
+                  <p className={`flex items-center gap-2.5 text-sm ${dirty ? 'text-emerald-200' : 'text-white/55'}`}>
+                    <span className={`w-2 h-2 rounded-full ${dirty ? 'bg-emerald-400 animate-pulse' : 'bg-white/30'}`} />
+                    {dirty ? 'Você tem alterações não salvas.' : 'Horários atualizados.'}
+                  </p>
+                  <button onClick={saveSettings} disabled={!dirty} className={btnSolid}><Save className="w-4 h-4" />Salvar horários</button>
+                </div>
               </div>
 
-              <div className={`sticky bottom-20 md:bottom-4 z-10 flex items-center justify-between gap-4 p-4 border backdrop-blur-md transition-colors ${dirty ? 'bg-[#1b1b20]/95 border-white/30' : 'bg-[#141417]/80 border-white/[0.08]'}`}>
-                <p className="text-sm text-white/60">{dirty ? 'Você tem alterações não salvas.' : 'Horários atualizados.'}</p>
-                <button onClick={saveSettings} disabled={!dirty} className={btnSolid}><Save className="w-4 h-4" />Salvar horários</button>
-              </div>
-
-              <div className={`${card} p-5 sm:p-6`}>
-                <h3 className="font-serif text-2xl">Bloqueios pontuais</h3>
-                <p className="text-sm text-white/45 mt-1 mb-5">Bloqueie só um período de um dia (ex.: consulta médica 14h–16h) ou o dia inteiro, sem mexer no expediente padrão.</p>
-                <form onSubmit={addBlock} className="space-y-4">
+              {/* Grupo 2: ajustes de um dia só — valem na hora */}
+              <SectionLabel tone="warn" hint="aplicam na hora, sem salvar">Ajustes pontuais</SectionLabel>
+              <Section
+                title="Bloqueios pontuais"
+                subtitle="Bloqueie só um período de um dia (ex.: consulta médica 14h–16h) ou o dia inteiro, sem mexer no expediente padrão."
+                icon={<Ban className="w-5 h-5" />}
+                tone="warn"
+              >
+                <form onSubmit={addBlock} className={`${cardInset} p-4 sm:p-5 space-y-4`}>
+                  <p className="text-[11px] uppercase tracking-[0.22em] font-semibold text-white/60">Novo bloqueio</p>
                   <div className="flex flex-wrap gap-2">
                     {([['day', 'Dia inteiro'], ['morning', 'Manhã'], ['afternoon', 'Tarde'], ['evening', 'Noite']] as const).map(([k, l]) => (
                       <button key={k} type="button" onClick={() => applyPreset(k)} className="h-9 px-3.5 border border-white/15 hover:border-white/45 text-[11px] uppercase tracking-[0.14em] font-semibold text-white/75 hover:text-white cursor-pointer transition-colors">{l}</button>
@@ -778,16 +866,20 @@ const AdminShell: React.FC<{ onClose: () => void; onLogout: () => void; onDataCh
                   <button type="submit" className={btnSolid}><Plus className="w-4 h-4" />{blkMode === 'day' ? 'Bloquear dia inteiro' : 'Bloquear horários'}</button>
                 </form>
 
-                <div className="mt-7 border-t border-white/[0.07] pt-5">
-                  <p className={lbl}>Bloqueios agendados</p>
+                <div className="mt-6">
+                  <div className="flex items-center justify-between mb-2.5">
+                    <p className="text-[11px] uppercase tracking-[0.22em] font-semibold text-white/60">Bloqueios agendados</p>
+                    <span className="text-[11px] text-white/35">{upcomingBlocks.length} ativo(s)</span>
+                  </div>
                   {upcomingBlocks.length === 0 ? (
-                    <p className="text-sm text-white/40 py-3">Nenhum bloqueio futuro.</p>
+                    <p className={`${cardInset} text-sm text-white/40 px-4 py-4`}>Nenhum bloqueio futuro.</p>
                   ) : (
-                    <ul className="divide-y divide-white/[0.07]">
+                    <ul className="space-y-2">
                       {upcomingBlocks.map((b) => (
-                        <li key={b.id} className="py-3 flex items-center justify-between gap-3">
+                        <li key={b.id} className={`${cardInset} relative pl-5 pr-3 py-3 flex items-center justify-between gap-3`}>
+                          <span aria-hidden className="absolute left-0 inset-y-0 w-[3px] bg-[#f0b968]" />
                           <div className="min-w-0">
-                            <p className="text-sm font-medium">{shortBR(b.dateStr)} · {WEEK_SHORT[parseDate(b.dateStr).getDay()]} — <span className="text-amber-200">{!b.timeStr ? 'Dia inteiro' : b.endTimeStr ? `${b.timeStr} às ${b.endTimeStr}` : b.timeStr}</span></p>
+                            <p className="text-sm font-medium">{shortBR(b.dateStr)} · {WEEK_SHORT[parseDate(b.dateStr).getDay()]} — <span className="text-[#f0b968]">{!b.timeStr ? 'Dia inteiro' : b.endTimeStr ? `${b.timeStr} às ${b.endTimeStr}` : b.timeStr}</span></p>
                             <p className="text-xs text-white/40 truncate">{b.reason}</p>
                           </div>
                           <ConfirmDelete onConfirm={() => removeBlock(b.id)} />
@@ -796,54 +888,68 @@ const AdminShell: React.FC<{ onClose: () => void; onLogout: () => void; onDataCh
                     </ul>
                   )}
                 </div>
-              </div>
+              </Section>
             </section>
           )}
 
           {/* ───────── SERVIÇOS ───────── */}
           {!loading && tab === 'servicos' && (
-            <section className="space-y-6">
-              <PageHead title="Serviços" subtitle="O que aparece na agenda dos clientes, com preço e duração." />
-              <form onSubmit={submitService} className={`${card} p-5 sm:p-6 space-y-4`}>
-                <h3 className="font-serif text-2xl">{editingId ? 'Editar serviço' : 'Novo serviço'}</h3>
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                  <div className="lg:col-span-2"><label className={lbl} htmlFor="sn">Nome</label><input id="sn" value={draft.name} onChange={(e) => setDraft({ ...draft, name: e.target.value })} className={inp} placeholder="Ex.: Corte social" /></div>
-                  <div><label className={lbl} htmlFor="sp">Preço (R$)</label><input id="sp" inputMode="decimal" value={draft.price} onChange={(e) => setDraft({ ...draft, price: e.target.value })} className={inp} placeholder="55" /></div>
-                  <div><label className={lbl} htmlFor="sd">Duração (min)</label><input id="sd" type="number" min={5} step={5} value={draft.duration} onChange={(e) => setDraft({ ...draft, duration: e.target.value })} className={inp} /></div>
-                  <div>
-                    <label className={lbl} htmlFor="sc">Categoria</label>
-                    <select id="sc" value={draft.category} onChange={(e) => setDraft({ ...draft, category: e.target.value as Service['category'] })} className={inp}>
-                      {(['cabelo', 'barba', 'combo', 'visagismo', 'outro'] as const).map((c) => <option key={c} value={c} className="bg-[#141417]">{c[0].toUpperCase() + c.slice(1)}</option>)}
-                    </select>
+            <section>
+              <PageHead eyebrow="Painel" title="Serviços" subtitle="O que aparece na agenda dos clientes, com preço e duração." />
+
+              <SectionLabel tone={editingId ? 'warn' : 'emerald'}>{editingId ? 'Editando serviço' : 'Cadastro'}</SectionLabel>
+              <form onSubmit={submitService}>
+                <Section
+                  title={editingId ? 'Editar serviço' : 'Novo serviço'}
+                  icon={editingId ? <Pencil className="w-5 h-5" /> : <Plus className="w-5 h-5" />}
+                  tone={editingId ? 'warn' : 'emerald'}
+                >
+                  <div className="space-y-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                      <div className="lg:col-span-2"><label className={lbl} htmlFor="sn">Nome</label><input id="sn" value={draft.name} onChange={(e) => setDraft({ ...draft, name: e.target.value })} className={inp} placeholder="Ex.: Corte social" /></div>
+                      <div><label className={lbl} htmlFor="sp">Preço (R$)</label><input id="sp" inputMode="decimal" value={draft.price} onChange={(e) => setDraft({ ...draft, price: e.target.value })} className={inp} placeholder="55" /></div>
+                      <div><label className={lbl} htmlFor="sd">Duração (min)</label><input id="sd" type="number" min={5} step={5} value={draft.duration} onChange={(e) => setDraft({ ...draft, duration: e.target.value })} className={inp} /></div>
+                      <div>
+                        <label className={lbl} htmlFor="sc">Categoria</label>
+                        <select id="sc" value={draft.category} onChange={(e) => setDraft({ ...draft, category: e.target.value as Service['category'] })} className={inp}>
+                          {(['cabelo', 'barba', 'combo', 'visagismo', 'outro'] as const).map((c) => <option key={c} value={c} className="bg-[#141417]">{c[0].toUpperCase() + c.slice(1)}</option>)}
+                        </select>
+                      </div>
+                      <div className="sm:col-span-2 lg:col-span-3"><label className={lbl} htmlFor="sx">Descrição (opcional)</label><input id="sx" value={draft.description} onChange={(e) => setDraft({ ...draft, description: e.target.value })} className={inp} placeholder="O que está incluso" /></div>
+                    </div>
+                    <div className="flex gap-2">
+                      <button type="submit" className={btnSolid}>{editingId ? <><Check className="w-4 h-4" />Salvar alterações</> : <><Plus className="w-4 h-4" />Cadastrar serviço</>}</button>
+                      {editingId && <button type="button" onClick={resetDraft} className={btnGhost + ' !h-11'}>Cancelar</button>}
+                    </div>
                   </div>
-                  <div className="sm:col-span-2 lg:col-span-3"><label className={lbl} htmlFor="sx">Descrição (opcional)</label><input id="sx" value={draft.description} onChange={(e) => setDraft({ ...draft, description: e.target.value })} className={inp} placeholder="O que está incluso" /></div>
-                </div>
-                <div className="flex gap-2">
-                  <button type="submit" className={btnSolid}>{editingId ? <><Check className="w-4 h-4" />Salvar alterações</> : <><Plus className="w-4 h-4" />Cadastrar serviço</>}</button>
-                  {editingId && <button type="button" onClick={resetDraft} className={btnGhost + ' !h-11'}>Cancelar</button>}
-                </div>
+                </Section>
               </form>
 
+              <SectionLabel tone="sky" hint={`${services.length} serviço(s)`}>Serviços cadastrados</SectionLabel>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                {services.map((s) => (
-                  <article key={s.id} className={`${card} p-5 flex flex-col gap-3 ${editingId === s.id ? '!border-white/50' : ''}`}>
-                    <div className="flex items-start justify-between gap-3">
-                      <div className="min-w-0">
-                        <span className="text-[10px] uppercase tracking-[0.16em] text-white/45 border border-white/12 px-2 py-0.5">{s.category}</span>
-                        <h3 className="mt-3 font-serif text-2xl leading-tight">{s.name}</h3>
+                {services.map((s) => {
+                  const ct = TONE[CATEGORY_TONE[s.category] || 'neutral'];
+                  return (
+                    <article key={s.id} className={`${card} relative overflow-hidden pl-6 pr-5 py-5 flex flex-col gap-3 ${editingId === s.id ? '!border-[#f0b968]/60' : ''}`}>
+                      <span aria-hidden className={`absolute left-0 inset-y-0 w-1 ${ct.bar}`} />
+                      <div className="flex items-start justify-between gap-4">
+                        <div className="min-w-0">
+                          <span className={`inline-block text-[10px] uppercase tracking-[0.16em] font-semibold border px-2 py-0.5 ${ct.border} ${ct.soft} ${ct.text}`}>{s.category}</span>
+                          <h3 className="mt-3 font-serif text-2xl leading-tight">{s.name}</h3>
+                        </div>
+                        <div className="text-right shrink-0 pl-4 border-l border-white/[0.09]">
+                          <p className="font-serif text-2xl text-emerald-300">{brl(s.price)}</p>
+                          <p className="text-xs text-white/45">{s.durationMinutes} min</p>
+                        </div>
                       </div>
-                      <div className="text-right shrink-0">
-                        <p className="font-serif text-2xl">{brl(s.price)}</p>
-                        <p className="text-xs text-white/45">{s.durationMinutes} min</p>
+                      {s.description && <p className="text-sm text-white/50 leading-relaxed">{s.description}</p>}
+                      <div className="flex gap-2 mt-auto pt-3 border-t border-white/[0.07]">
+                        <button onClick={() => startEdit(s)} className={btnGhost + ' !h-9 !px-3'}><Pencil className="w-3.5 h-3.5" />Editar</button>
+                        <ConfirmDelete onConfirm={() => deleteService(s.id)} />
                       </div>
-                    </div>
-                    {s.description && <p className="text-sm text-white/50 leading-relaxed">{s.description}</p>}
-                    <div className="flex gap-2 mt-auto pt-1">
-                      <button onClick={() => startEdit(s)} className={btnGhost + ' !h-9 !px-3'}><Pencil className="w-3.5 h-3.5" />Editar</button>
-                      <ConfirmDelete onConfirm={() => deleteService(s.id)} />
-                    </div>
-                  </article>
-                ))}
+                    </article>
+                  );
+                })}
               </div>
             </section>
           )}
@@ -868,11 +974,12 @@ const AdminShell: React.FC<{ onClose: () => void; onLogout: () => void; onDataCh
             }
             return (
               <section>
-                <PageHead title="Clientes" subtitle={`${clients.length} cliente(s) cadastrados pelos agendamentos`} />
-                <div className="relative mb-5">
+                <PageHead eyebrow="Painel" title="Clientes" subtitle={`${clients.length} cliente(s) cadastrados pelos agendamentos`} />
+                <div className="relative mb-2">
                   <Search className="w-4 h-4 absolute left-4 top-1/2 -translate-y-1/2 text-white/35" />
                   <input value={clientQuery} onChange={(e) => setClientQuery(e.target.value)} placeholder="Buscar por nome ou telefone" className={inp + ' !h-12 pl-11'} aria-label="Buscar cliente" />
                 </div>
+                <SectionLabel tone="sky" hint="ordenados por total gasto">{clientQuery ? `Resultados (${filteredClients.length})` : 'Todos os clientes'}</SectionLabel>
                 {filteredClients.length === 0 ? (
                   <div className={`${card} py-14 text-center text-white/45`}><Users className="w-8 h-8 mx-auto text-white/25 mb-3" />Nenhum cliente encontrado.</div>
                 ) : (
@@ -880,18 +987,19 @@ const AdminShell: React.FC<{ onClose: () => void; onLogout: () => void; onDataCh
                     {filteredClients.map((c) => {
                       const fav = Object.entries(c.fav).sort((a, b) => b[1] - a[1])[0]?.[0];
                       return (
-                        <article key={c.phone} className={`${card} flex items-center gap-2 pr-4 sm:pr-5 hover:border-white/25 transition-colors`}>
+                        <article key={c.phone} className={`${card} relative overflow-hidden flex items-center gap-2 pr-4 sm:pr-5 hover:border-white/25 transition-colors`}>
+                          <span aria-hidden className="absolute left-0 inset-y-0 w-1 bg-sky-400/70" />
                           <button
                             type="button"
                             onClick={() => setClientSel(c.phone)}
                             aria-label={`Ver histórico de ${c.name}`}
-                            className="flex-1 min-w-0 p-4 sm:p-5 flex items-center gap-4 text-left cursor-pointer"
+                            className="flex-1 min-w-0 p-4 sm:p-5 pl-5 sm:pl-6 flex items-center gap-4 text-left cursor-pointer"
                           >
-                            <span className="w-12 h-12 shrink-0 rounded-full bg-white/[0.07] border border-white/10 flex items-center justify-center font-serif text-lg">{initials(c.name)}</span>
+                            <span className="w-12 h-12 shrink-0 rounded-full bg-sky-400/10 border border-sky-400/30 text-sky-200 flex items-center justify-center font-serif text-lg">{initials(c.name)}</span>
                             <span className="flex-1 min-w-0">
                               <span className="block font-semibold truncate">{c.name}</span>
                               <span className="block text-xs text-white/45">{fmtPhone(c.phone)}</span>
-                              <span className="block mt-1.5 text-xs text-white/60">{c.visits} visita(s) · <span className="text-white">{brl(c.spent)}</span> · última {shortBR(c.last)}</span>
+                              <span className="block mt-1.5 text-xs text-white/60">{c.visits} visita(s) · <span className="text-emerald-300 font-medium">{brl(c.spent)}</span> · última {shortBR(c.last)}</span>
                               {fav && <span className="block text-[11px] text-white/40 truncate">Favorito: {fav}</span>}
                             </span>
                             <ChevronRight className="w-4 h-4 shrink-0 text-white/30" />
@@ -908,42 +1016,45 @@ const AdminShell: React.FC<{ onClose: () => void; onLogout: () => void; onDataCh
 
           {/* ───────── RESUMO ───────── */}
           {!loading && tab === 'resumo' && (
-            <section className="space-y-6">
-              <PageHead title="Resumo" subtitle={`Desempenho de ${parseDate(todayStr()).toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' })}`} />
+            <section>
+              <PageHead eyebrow="Painel" title="Resumo" subtitle={`Desempenho de ${parseDate(todayStr()).toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' })}`} />
+
+              <SectionLabel tone="emerald" hint="mês atual">Números do mês</SectionLabel>
               <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-                <Stat label="Faturamento" value={brl(monthRevenue)} hint="no mês" icon={<TrendingUp className="w-4 h-4" />} />
-                <Stat label="Atendimentos" value={String(monthValid.length)} hint="no mês" icon={<Scissors className="w-4 h-4" />} />
-                <Stat label="Ticket médio" value={brl(ticket)} hint="por atendimento" icon={<Calendar className="w-4 h-4" />} />
-                <Stat label="Cancelados" value={String(monthCancelled)} hint="no mês" icon={<XCircle className="w-4 h-4" />} />
+                <Stat featured label="Faturamento" value={brl(monthRevenue)} hint="no mês" icon={<Wallet className="w-4 h-4" />} />
+                <Stat tone="sky" label="Atendimentos" value={String(monthValid.length)} hint="no mês" icon={<Scissors className="w-4 h-4" />} />
+                <Stat tone="violet" label="Ticket médio" value={brl(ticket)} hint="por atendimento" icon={<TrendingUp className="w-4 h-4" />} />
+                <Stat tone="rose" label="Cancelados" value={String(monthCancelled)} hint="no mês" icon={<XCircle className="w-4 h-4" />} />
               </div>
 
-              <div className={`${card} p-5 sm:p-6`}>
-                <h3 className="font-serif text-2xl mb-5">Últimos 7 dias</h3>
-                <div className="flex items-end gap-2 sm:gap-4 h-44">
-                  {last7.map((x) => (
-                    <div key={x.d} className="flex-1 flex flex-col items-center justify-end gap-2 h-full">
-                      <span className="text-[10px] text-white/45 tabular-nums">{x.total ? brl(x.total).replace('R$ ', '') : ''}</span>
-                      <div className={`w-full ${x.d === todayStr() ? 'bg-white' : 'bg-white/30'} transition-all`} style={{ height: `${Math.max(4, (x.total / maxBar) * 100)}%` }} />
-                      <span className="text-[10px] uppercase tracking-wider text-white/45">{WEEK_SHORT[parseDate(x.d).getDay()]}</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              <div className={`${card} p-5 sm:p-6`}>
-                <h3 className="font-serif text-2xl mb-4">Serviços mais pedidos</h3>
-                {topServices.length === 0 ? (
-                  <p className="text-sm text-white/40">Ainda sem atendimentos neste mês.</p>
-                ) : (
-                  <ul className="space-y-3">
-                    {topServices.map(([name, n]) => (
-                      <li key={name}>
-                        <div className="flex justify-between text-sm mb-1.5"><span>{name}</span><span className="text-white/50">{n}×</span></div>
-                        <div className="h-1.5 bg-white/10"><div className="h-full bg-white" style={{ width: `${(n / topServices[0][1]) * 100}%` }} /></div>
-                      </li>
+              <SectionLabel tone="sky">Detalhes</SectionLabel>
+              <div className="space-y-4">
+                <Section title="Últimos 7 dias" subtitle="Faturamento por dia, sem cancelados" icon={<TrendingUp className="w-5 h-5" />} tone="emerald">
+                  <div className="flex items-end gap-2 sm:gap-4 h-44">
+                    {last7.map((x) => (
+                      <div key={x.d} className="flex-1 flex flex-col items-center justify-end gap-2 h-full">
+                        <span className="text-[10px] text-white/45 tabular-nums">{x.total ? brl(x.total).replace('R$ ', '') : ''}</span>
+                        <div className={`w-full ${x.d === todayStr() ? 'bg-emerald-400' : 'bg-white/25'} transition-all`} style={{ height: `${Math.max(4, (x.total / maxBar) * 100)}%` }} />
+                        <span className={`text-[10px] uppercase tracking-wider ${x.d === todayStr() ? 'text-emerald-300 font-semibold' : 'text-white/45'}`}>{WEEK_SHORT[parseDate(x.d).getDay()]}</span>
+                      </div>
                     ))}
-                  </ul>
-                )}
+                  </div>
+                </Section>
+
+                <Section title="Serviços mais pedidos" subtitle="Ranking do mês" icon={<Scissors className="w-5 h-5" />} tone="warn">
+                  {topServices.length === 0 ? (
+                    <p className="text-sm text-white/40">Ainda sem atendimentos neste mês.</p>
+                  ) : (
+                    <ul className="space-y-4">
+                      {topServices.map(([name, n], i) => (
+                        <li key={name}>
+                          <div className="flex justify-between text-sm mb-1.5"><span><span className="text-white/35 tabular-nums mr-2">{i + 1}.</span>{name}</span><span className="text-white/50">{n}×</span></div>
+                          <div className="h-1.5 bg-white/10"><div className="h-full bg-[#f0b968]" style={{ width: `${(n / topServices[0][1]) * 100}%` }} /></div>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </Section>
               </div>
             </section>
           )}
@@ -951,11 +1062,16 @@ const AdminShell: React.FC<{ onClose: () => void; onLogout: () => void; onDataCh
       </main>
 
       {/* Navegação inferior (mobile): sempre visível, sem rolagem lateral */}
-      <nav className="md:hidden shrink-0 grid grid-cols-5 border-t border-white/[0.08] bg-[#101013] pb-[env(safe-area-inset-bottom,0px)]" aria-label="Seções do painel">
+      <nav className="md:hidden shrink-0 grid grid-cols-5 border-t border-white/[0.1] bg-[#0f0f12] pb-[env(safe-area-inset-bottom,0px)]" aria-label="Seções do painel">
         {NAV.map((n) => (
-          <button key={n.id} onClick={() => setTab(n.id)} className={`relative flex flex-col items-center justify-center gap-1 h-16 text-[10px] uppercase tracking-[0.12em] font-semibold cursor-pointer transition-colors ${tab === n.id ? 'text-white' : 'text-white/45'}`}>
+          <button key={n.id} onClick={() => setTab(n.id)} className={`relative flex flex-col items-center justify-center gap-1 h-16 text-[10px] uppercase tracking-[0.12em] font-semibold cursor-pointer transition-colors ${tab === n.id ? 'text-white bg-white/[0.06]' : 'text-white/45'}`}>
             {tab === n.id && <span className="absolute top-0 left-4 right-4 h-[2px] bg-white" />}
-            {n.icon}
+            <span className="relative">
+              {n.icon}
+              {n.id === 'agenda' && todayCount > 0 && (
+                <span className="absolute -top-1.5 -right-2.5 min-w-[1.1rem] h-[1.1rem] px-1 flex items-center justify-center rounded-full bg-emerald-400 text-black text-[10px] font-bold tabular-nums">{todayCount}</span>
+              )}
+            </span>
             {n.label}
           </button>
         ))}
